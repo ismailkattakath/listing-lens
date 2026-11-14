@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "advertiser_link.v1.schema.json",
+  "title": "advertiser_link.v1",
+  "description": "One edge between two ads: they share one identifying key directly. Clustering kinds (phone4, handle, name, title, desc, venue) link ads of the SAME advertiser; `photo` (the same media URL) is recorded but never clusters and may cross advertisers. Written by derive-advertisers to derived/advertiser_links.jsonl, ad_a < ad_b.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "advertiser_id",
+    "advertiser_b",
+    "site",
+    "ad_a",
+    "ad_b",
+    "link_kind",
+    "link_key",
+    "used_for_clustering"
+  ],
+  "properties": {
+    "schema": {
+      "const": "advertiser_link.v1"
+    },
+    "advertiser_id": {
+      "type": "string",
+      "description": "ad_a's advertiser (advertiser.v1)"
+    },
+    "site": {
+      "type": "string"
+    },
+    "ad_a": {
+      "type": "string"
+    },
+    "ad_b": {
+      "type": "string"
+    },
+    "link_kind": {
+      "enum": [
+        "phone4",
+        "handle",
+        "name",
+        "title",
+        "desc",
+        "venue",
+        "photo"
+      ]
+    },
+    "link_key": {
+      "type": "string",
+      "description": "The shared value: phone4 = last 4 digits as written in the ad text; handle, name, venue = normalised; title, desc, photo = a 12-hex fingerprint (photo: of the exact media URL), never the text."
+    },
+    "advertiser_b": {
+      "type": "string",
+      "description": "ad_b's advertiser; equals advertiser_id for every clustering kind"
+    },
+    "used_for_clustering": {
+      "type": "boolean",
+      "description": "false for photo: recorded for analysis, never merges advertisers"
+    }
+  }
+}

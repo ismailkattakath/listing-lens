@@ -1,0 +1,24 @@
+{
+  "schema": "geocode.v1",
+  "provider": "google-geocoding",
+  "query": "Example St & Sample Ave, Sample Province",
+  "place_id": "synthetic-place-id",
+  "resolved_at": "2026-01-15T12:05:00Z",
+  "expires_at": "2026-02-14T12:05:00Z",
+  "result": {
+    "provider": "google-geocoding",
+    "status": "OK",
+    "formatted": "Example St & Sample Ave, Exampleton, ON, Canada",
+    "point": {
+      "lat": 43.701,
+      "lon": -79.401
+    },
+    "types": [
+      "intersection"
+    ],
+    "precise": true,
+    "partial": false,
+    "place_id": "synthetic-place-id",
+    "at": "2026-01-15T12:05:00Z"
+  }
+}

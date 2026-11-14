@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "place_check_pending.v1.schema.json",
+  "title": "place_check_pending.v1",
+  "description": "One place-check review case awaiting a human (a later Label Studio batch), in DATA derived/place-check.pending.jsonl. Where the hint sits as field + character offsets, NEVER the text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "site", "ad_id", "case", "reason", "span", "group", "method"],
+  "properties": {
+    "schema": { "const": "place_check_pending.v1" },
+    "site": { "type": "string" },
+    "ad_id": { "type": "string" },
+    "case": { "enum": ["no_pin", "far", "city_default_pin", "rejected_hint_number"] },
+    "reason": { "type": ["string", "null"] },
+    "method": { "type": "string" },
+    "group": { "type": "string", "description": "review group: a hash of (normalised hint, result); one human decision per group fans out to its ads" },
+    "span": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "start", "end", "basis"],
+          "properties": {
+            "field": { "enum": ["title", "description"] },
+            "start": { "type": "integer", "minimum": 0 },
+            "end": { "type": "integer", "minimum": 0 },
+            "basis": { "enum": ["original", "nfkc"], "description": "offsets in the original field text, or in its NFKC form (gta-hints matches NFKC)" }
+          }
+        }
+      ]
+    }
+  }
+}

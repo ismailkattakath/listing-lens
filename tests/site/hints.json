@@ -1,0 +1,22 @@
+{
+ "schema": "li-hints-vocab.v2",
+ "note": "SYNTHETIC test vocabulary: invented places, a placeholder highway system, generic English words.",
+ "cities": ["exampleton", "sampleville", "northmere", "westmere", "eastmere", "north exampleton"],
+ "areas": ["midmere", "downtown(?: exampleton)?", "upmere", "oldmill", "the quarter", "westmere", "eastmere"],
+ "landmarks": ["example plaza", "glenmarket", "sample (?:mall|arena)", "quarry town cent(?:re|er)", "exampleton airport"],
+ "aliases": [
+  {"pattern": "\\bEP\\s?1\\b|\\bex(?:ample)?\\s?plaza\\b(?!\\s+(?:shopping|mall))", "ignorecase": true, "query": "Example Plaza Shopping Centre, Northmere"},
+  {"pattern": "\\bSMC\\b", "ignorecase": false, "query": "Sample Metro Centre station, Sampleville"},
+  {"pattern": "\\bQTC\\b", "ignorecase": false, "query": "Quarry Town Centre, Exampleton"}
+ ],
+ "roadwords": ["varne", "pemberly", "morvan", "tessaline", "bramwick", "pake", "dorran", "vexie", "brannock", "quill", "fenwick", "ashgrove", "corvel", "xpw", "rvp", "queen", "king", "main", "park", "star", "bay", "church"],
+ "generic": ["queen", "king", "royal", "park", "star", "main", "university", "college", "centre", "highway", "hwy", "airport", "bay", "church"],
+ "stop": ["i", "im", "i'm", "me", "my", "you", "your", "we", "the", "a", "an", "and", "or", "in", "on", "at", "to", "for", "of", "by", "with", "near", "from", "new", "best", "real", "hot", "sexy", "sweet", "only", "please", "call", "text", "hour", "hours", "am", "pm", "examplesite"],
+ "noise": ["incall", "outcall", "gfe", "duo", "solo", "safe", "discreet", "clean", "text", "call", "cash", "real", "verified", "private", "date", "time", "hours", "kiss", "shower", "massage", "party", "girl", "lady", "ladies", "sweet", "sexy", "hot", "open", "minded", "directory", "review"],
+ "postal": "\\b[A-Z]\\d[A-Z]\\s?\\d[A-Z]\\d\\b",
+ "fsa": "\\b[A-Z]\\d[A-Z]\\b",
+ "label_noise": {"@8.2": {"phrase": ["lofty", "demand"]}, "@8.3": {"word": "lofty", "unless_before": ["glade"]}},
+ "highway_names": ["xpw", "rvp"],
+ "highway_number": "5\\d{2}",
+ "station_brands": ["(?i:mtx)", "(?-i:RX)"]
+}

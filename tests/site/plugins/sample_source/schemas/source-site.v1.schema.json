@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-site.v1.schema.json",
+  "title": "source-site.v1",
+  "description": "The SYNTHETIC test source's own facts under a listing.v1 record's `site` object (one key: the source's record_key); listing.v1 applies it by $ref.",
+  "properties": {
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "city_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "age": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "ethnicity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "service_mode": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "incall",
+              "outcall"
+            ]
+          }
+        },
+        "tagline": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "services": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "label"
+            ],
+            "properties": {
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "page_schema_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

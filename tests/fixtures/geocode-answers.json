@@ -1,0 +1,56 @@
+{
+  "Example St & Sample Ave, Exampleton, Sample Province": {
+    "formatted_address": "Example St & Sample Ave, Exampleton, SP, Sampleland",
+    "geometry": {
+      "location": {
+        "lat": 43.701,
+        "lng": -79.401
+      }
+    },
+    "types": [
+      "intersection"
+    ],
+    "place_id": "synthetic-1"
+  },
+  "123 Placeholder Rd, Exampleton, Sample Province": {
+    "formatted_address": "123 Placeholder Rd, Exampleton, SP, Sampleland",
+    "geometry": {
+      "location": {
+        "lat": 43.72,
+        "lng": -79.43
+      }
+    },
+    "types": [
+      "street_address"
+    ],
+    "place_id": "synthetic-2"
+  },
+  "Exampleton, Sample Province": {
+    "formatted_address": "Exampleton, SP, Sampleland",
+    "geometry": {
+      "location": {
+        "lat": 43.75,
+        "lng": -79.45
+      }
+    },
+    "types": [
+      "locality",
+      "political"
+    ],
+    "place_id": "synthetic-3"
+  },
+  "Sampleville, Sample Province": {
+    "formatted_address": "Sampleville, SP, Sampleland",
+    "geometry": {
+      "location": {
+        "lat": 43.85,
+        "lng": -79.35
+      }
+    },
+    "types": [
+      "locality",
+      "political"
+    ],
+    "place_id": "synthetic-4"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "observation.v1",
+  "ad_id": "1000001",
+  "site": "example.invalid",
+  "seen_at": "2026-01-15T11:58:00Z",
+  "ad_url": "https://www.example.invalid/listings/sample-list-a/sample-region/exampleton_synthetic_example_ad-1000001",
+  "crawl_id": "2026-01-15T11:55Z/sample-list-a/stride-15-start-3",
+  "list": {
+    "url": "https://www.example.invalid/listings/sample-list-a/sample-region?page=3",
+    "subcategory": "sample-list-a",
+    "page": 3,
+    "page_count": 30,
+    "position": 1,
+    "sponsored": false,
+    "sample_weight": 15.0
+  },
+  "card": {
+    "title": "Synthetic example ad title",
+    "city_label": "Exampleton",
+    "sample": {
+      "name": "Example",
+      "age": 30,
+      "ethnicity": null,
+      "verified": false,
+      "rate": null,
+      "available": false
+    }
+  },
+  "bumped_at": null,
+  "card_hash": "sha256:0123456789abcdef"
+}

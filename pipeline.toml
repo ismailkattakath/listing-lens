@@ -1,0 +1,324 @@
+# listing-lens on scrape-harness: the ONE declaration of its stages, I/O, network classes, data files,
+# world-visible names and plug-ins (schema pipeline.v1, from the harness). The run card, the store, the
+# CLI's env names, the Bash hook (the harness plugin) and the generated .claude/settings.json all derive
+# from it. The stage/IO/file tables are byte-for-byte the pre-switch hand-kept lists (proved by
+# tests/test_switch_goldens.py against the capture at 333e075). Paths are templates, never data.
+schema = "pipeline.v1"
+name = "listing-lens"
+
+# Flags that make a network-class command offline (a space also matches "=").
+offline_flags = ["--dry-run", "--driver fixture", "--geocoder fixture"]
+
+# What a --plan invocation writes instead of the command's outputs.
+plan_outputs = ["STATE:plans/{plan_hash}.json"]
+
+# Who listing-lens is to the world. Knobs are "LLENS_<KNOB>" (e.g. LLENS_NETWORK_APPROVED).
+[consumer]
+cli = "llens"
+env_prefix = "LLENS"
+data_env = "LLENS_DATA"
+state_env = "LLENS_STATE"
+state_dirname = "listing-insights"  # the EXISTING state folder: harness ship roots its gcroots at <XDG_STATE_HOME>/<state_dirname>, not at the state env
+default_site = "example.invalid"  # the site file's [pipeline.consumer] wins
+default_region = "sample-region"
+# The approval key (Secretive, Touch ID) by fingerprint; verify also needs LLENS_APPROVAL_SIGNERS to match.
+approval_key_fingerprint = "SHA256:XbGaytyJKxDAvEdGEv719gGZoN84WE5Sdn+bYPaahsc"
+secret_envs = ["GEOCODE_KEY", "LLENS_DB_URL"]  # only llens reads it; the hook blocks any command expanding it
+site_hosts = ["example.invalid"]  # direct HTTP to the site is blocked; pages go through llens' driver only
+# The site specifics (default_site, default_region, site_hosts, [plugins.sources], [crawl] proxy and refresh)
+# live in the SITE FILE, never here: $LLENS_SITE_CONFIG, else $LLENS_DATA/config/site.toml, under
+# [pipeline.*] (scrape-harness site_overlay). Unreadable = llens and the guard refuse, never these examples.
+site_overlay = true
+
+# listing-lens' own code (an installed package) and its record schemas, relative to this file.
+[plugins]
+schema_dirs = ["schemas", "schemas/agents"]
+commands = ["listing_lens.commands:register"]  # extract, geocode, derive, qa-page
+
+
+
+[plugins.extractors]
+"gta-hints@6" = "listing_lens.extractors.gta_hints:GtaHints"
+"gta-hints@7" = "listing_lens.extractors.gta_hints:GtaHints7"
+"gta-hints@8" = "listing_lens.extractors.gta_hints:GtaHints8"
+"gta-hints@8.1" = "listing_lens.extractors.gta_hints:GtaHints81"
+"gta-hints@8.2" = "listing_lens.extractors.gta_hints:GtaHints82"
+"gta-hints@8.3" = "listing_lens.extractors.gta_hints:GtaHints83"
+
+[plugins.geocoders]
+google = "listing_lens.geocoders.google:GoogleGeocoder"
+fixture = "listing_lens.geocoders.fixture:FixtureGeocoder"
+
+# The operator's own permission allow rules, merged into the generated .claude/settings.json.
+[claude]
+allow = [
+  "Bash(llens *)",
+  "Bash(nix build *)",
+  "Bash(nix flake check*)",
+  "Bash(nix flake show*)",
+  "Bash(nix develop*)",
+  "Bash(nix fmt*)",
+  "Bash(nix run .#env-doctor*)",
+  "Bash(nix run .#leak-gate*)",
+  "Bash(pytest*)",
+  "Bash(ruff *)",
+  "Bash(check-jsonschema *)",
+  "Bash(git status*)",
+  "Bash(git diff*)",
+  "Bash(git log*)",
+]
+
+[groups]
+run = [
+  "DATA:runs/{run_file}.json",
+  "DATA:runs/{run_file}.log.jsonl",
+  "DATA:events.jsonl",
+  "STATE:crawlee/request_queues/{queue}",
+]
+
+# ── Stages, in order: the position is "Stage N/M" ────────────────────────────────────────────────
+
+[[stages]]
+name = "crawl-lists"
+network = "site"
+inputs = []
+outputs = ["DATA:observations.jsonl", "@run"]
+
+[[stages]]
+name = "fetch-ads"
+network = "site"
+inputs = ["DATA:observations.jsonl", "DATA:listings.jsonl"]
+outputs = [
+  "DATA:listings.jsonl",
+  "DATA:raw/{site}/ ({ads} ad snapshots)",
+  "DATA:derived/samples/{sample_file}.jsonl",
+  "@run",
+]
+
+[[stages]]
+name = "reparse"
+network = "none"
+inputs = ["DATA:listings.jsonl", "DATA:raw/"]
+outputs = ["DATA:listings.jsonl"]
+
+[[stages]]
+name = "extract"
+network = "none"
+inputs = ["DATA:listings.jsonl"]
+outputs = ["stdout:JSON lines"]
+
+[[stages]]
+name = "geocode"
+network = "paid"
+inputs = [
+  "DATA:listings.jsonl",
+  "DATA:geocode-cache.jsonl",
+  "DATA:decisions/place-review.*.jsonl (the operator's other_place texts; --only place-review)",
+]
+outputs = ["DATA:geocode-cache.jsonl"]
+
+[[stages]]
+name = "derive"
+network = "none"
+inputs = [
+  "DATA:listings.jsonl",
+  "DATA:geocode-cache.jsonl",
+  "DATA:decisions/place-check.jsonl (machine place decisions)",
+  "DATA:decisions/place-review.*.jsonl (operator place decisions; win over the machine's)",
+  "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json (region by boundary, the site file's [boundaries]; absent = radius)",
+]
+outputs = ["DATA:derived/listings.latest.jsonl", "DATA:derived/summary.json"]
+
+[[stages]]
+name = "qa-page"
+network = "none"
+inputs = ["DATA:derived/listings.latest.jsonl"]
+outputs = ["DATA:derived/qa.html"]
+
+# ── Utilities: outside the stage order ───────────────────────────────────────────────────────────
+
+[[utilities]]
+name = "ab"
+network = "site"
+inputs = []
+outputs = ["DATA:derived/ab-{ab_at}.json", "@run"]
+
+[[utilities]]
+name = "probe robots"
+network = "site"  # ONE robots.txt GET after the egress preflight; gated like any site run
+inputs = []
+outputs = ["@run"]
+
+[[utilities]]
+name = "crawl resume"
+network = "site"
+inputs = ["STATE:crawlee/request_queues/{queue}", "DATA:runs/{run_file}.json"]
+outputs = ["DATA:observations.jsonl, listings.jsonl", "@run"]
+
+[[utilities]]
+name = "export-db"
+network = "paid"  # our own database (metered compute); gated like geocode: --approve-network, --dry-run offline
+inputs = [
+  "DATA:observations.jsonl",
+  "DATA:listings.jsonl",
+  "DATA:derived/",
+  "DATA:geocode-cache.jsonl",
+  "DATA:runs/",
+  "DATA:events.jsonl",
+  "DATA:findings.jsonl",
+  "DATA:import/2026-11-07-phone-session/",
+  "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json",
+  "DATA:eval/address-gold-v3/MANIFEST.json (+ the tranche files it names: hint_gold_v3; missing = exit 2)",
+]
+outputs = ["stdout:JSON summary (rows, merge counts, digest); the DB schema li is rebuilt atomically"]
+
+[[utilities]]
+name = "derive-advertisers"
+network = "none"
+inputs = ["DATA:derived/listings.latest.jsonl"]
+outputs = [
+  "DATA:derived/advertisers.jsonl",
+  "DATA:derived/advertiser_links.jsonl",
+  "DATA:derived/advertisers_ablation.jsonl",
+  "DATA:derived/advertisers_v1.jsonl (--method v1, the frozen record)",
+  "DATA:derived/advertisers_v2.jsonl (--method v2)",
+  "DATA:derived/advertiser_v2_links.jsonl (--method v2: the edges that merged its ads)",
+]
+
+[[utilities]]
+name = "services"
+network = "none"
+inputs = [
+  "DATA:derived/listings.latest.jsonl",
+  "DATA:vocab/services.ttl (the operator's SKOS vocabulary; --vocab PATH)",
+  "DATA:eval/services-gold.freeze.json + eval/services-gold.jsonl (blind-eval freeze; absent = eval ads excluded)",
+  "DATA:eval/services-persona-split.json (its eval-half personas' ads are what an unfrozen run excludes)",
+]
+outputs = ["DATA:derived/services.latest.jsonl", "DATA:derived/services.summary.json"]
+
+[[utilities]]
+name = "place-check"
+network = "none"
+inputs = [
+  "DATA:derived/listings.latest.jsonl",
+  "DATA:gazetteer/2026-11-08-streets-geom/ (OSM street geometry, box + 25 km)",
+  "DATA:gazetteer/2026-11-08/ (OSM malls, stations, aerodromes, universities)",
+]
+outputs = ["DATA:decisions/place-check.jsonl", "DATA:derived/place-check.pending.jsonl"]
+
+[[utilities]]
+name = "boundaries-build"
+network = "none"
+inputs = ["DATA:<[boundaries] dir>/<zip> (the site file's [boundaries] dataset; licence in its manifest.json)"]
+outputs = ["DATA:<[boundaries] dir>/<slim>"]
+
+[[utilities]]
+name = "places-resolve"
+network = "none"
+inputs = [
+  "DATA:derived/listings.latest.jsonl (development ads only: address-gold-v2 operators excluded)",
+  "DATA:gazetteer/2026-11-08/ (OSM, Wikidata aliases, GeoNames)",
+  "DATA:eval/address-gold-v2/sample.json (its operators are excluded)",
+  "DATA:decisions/place-review.*.jsonl (the operator's not_a_place tokens are never candidates)",
+]
+outputs = ["DATA:vocab/places.ttl", "DATA:vocab/places.pending.jsonl"]
+
+[[utilities]]
+name = "panel build"
+network = "none"
+inputs = ["DATA:derived/advertisers.jsonl", "DATA:derived/listings.latest.jsonl"]
+outputs = ["DATA:derived/panels/ (the panel file)"]
+
+[[utilities]]
+name = "panel run"
+network = "site"
+inputs = ["DATA:derived/panels/ (the panel file)", "STATE:approvals/ledger.jsonl"]
+outputs = ["DATA:observations.jsonl, listings.jsonl", "DATA:raw/{site}/", "@run"]
+
+[[utilities]]
+name = "migrate"
+network = "none"
+inputs = ["OLD:every file"]
+outputs = ["DATA:data files", "STATE:state files"]
+
+[[utilities]]
+name = "cooldown"
+network = "none"
+inputs = ["DATA:events.jsonl"]
+outputs = ["DATA:events.jsonl"]
+
+[[utilities]]
+name = "approve"
+network = "none"
+operator_only = true
+inputs = []
+outputs = []
+
+[[utilities]]
+name = "browser open"
+network = "site"
+operator_only = true
+inputs = []
+outputs = []
+
+# ── Typed data files under DATA: kind -> path + record schema ───────────────────────────────────
+
+[files.observations]
+path = "observations.jsonl"
+schema = "observation.v1"
+
+[files.listings]
+path = "listings.jsonl"
+schema = "listing.v1"
+
+[files.geocodes]
+path = "geocode-cache.jsonl"
+schema = "geocode.v1"
+
+[files.findings]
+path = "findings.jsonl"
+schema = "finding.v1"
+
+[files.derived]
+path = "derived/listings.latest.jsonl"
+schema = "listing.v1"
+
+[files.advertisers]
+path = "derived/advertisers.jsonl"
+schema = "advertiser.v1"
+
+[files.advertiser_links]
+path = "derived/advertiser_links.jsonl"
+schema = "advertiser_link.v1"
+
+[files.advertisers_ablation]
+path = "derived/advertisers_ablation.jsonl"
+schema = "advertiser_ablation.v1"
+
+[files.advertisers_v1]
+path = "derived/advertisers_v1.jsonl"
+schema = "advertiser.v1"
+
+[files.advertisers_v2]
+path = "derived/advertisers_v2.jsonl"
+schema = "advertiser.v2"
+
+[files.advertiser_v2_links]
+path = "derived/advertiser_v2_links.jsonl"
+schema = "advertiser_v2_link.v1"
+
+[files.services]
+path = "derived/services.latest.jsonl"
+schema = "services.v1"
+
+[files.place_check]
+path = "decisions/place-check.jsonl"
+schema = "place_check.v1"
+
+[files.place_check_pending]
+path = "derived/place-check.pending.jsonl"
+schema = "place_check_pending.v1"
+
+[files.events]
+path = "events.jsonl"
+schema = "event.v1"

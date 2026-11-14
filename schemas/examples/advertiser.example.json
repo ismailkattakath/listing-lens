@@ -1,0 +1,9 @@
+{
+  "schema": "advertiser.v1",
+  "advertiser_id": "adv-0123456789ab",
+  "site": "example.invalid",
+  "ad_ids": ["1000001", "1000003"],
+  "link_kinds": ["n", "ph4"],
+  "venue_only": false,
+  "method": "advertisers@1:ph4+handle+desc200+name+title+venue"
+}

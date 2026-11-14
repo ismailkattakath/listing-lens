@@ -1,0 +1,8 @@
+{
+  "schema": "finding-analyst.input.v1",
+  "hypothesis_id": "H0",
+  "question": "Synthetic example: is the site pin closer to the written address than to the filed city centre?",
+  "summary": { "method": "gta-hints@6+google-geocoding+haversine", "n_listings": 0 },
+  "register": [],
+  "snapshot": null
+}

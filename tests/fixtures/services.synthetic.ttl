@@ -1,0 +1,21 @@
+# SYNTHETIC SKOS fixture: made-up concepts only. The real vocabulary is the operator's data (never in git).
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix svc:  <urn:li:vocab:services:> .
+
+svc: a skos:ConceptScheme ;
+    skos:prefLabel "synthetic test scheme"@en ;
+    owl:versionInfo "0.0.0-test" .
+
+svc:alpha a skos:Concept ;
+    skos:inScheme svc: ;
+    skos:notation "alpha" ;
+    skos:prefLabel "alpha service"@en ;
+    skos:altLabel "AS"@en ;
+    skos:hiddenLabel "4lpha service"@en .
+
+svc:beta a skos:Concept ;
+    skos:inScheme svc: ;
+    skos:notation "beta" ;
+    skos:prefLabel "beta thing"@en ;
+    skos:broader svc:alpha .

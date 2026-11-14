@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "advertiser.v1.schema.json",
+  "title": "advertiser.v1",
+  "description": "One advertiser cluster: ads linked by a shared identifying key (phone last-4, social handle, name, title, description prefix, written venue). DERIVED (derived/advertisers.jsonl), rebuilt by `llens derive-advertisers` from the latest listings; it holds no fact of its own. `venue_only`: linked only through a shared written venue, so NOT an advertiser for a panel.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "advertiser_id", "site", "ad_ids", "link_kinds", "venue_only", "method"],
+  "properties": {
+    "schema": { "const": "advertiser.v1" },
+    "advertiser_id": { "type": "string", "pattern": "^(adv-|v1\\.1:)[0-9a-f]{12}$", "description": "sha256 of the sorted member ad_ids; a new member gives a new id (a panel keeps its own member list). The prefix names the method: adv- = advertisers@1 (frozen), v1.1: = advertisers@1.1 (the default since 2026-11-08)." },
+    "site": { "type": "string" },
+    "ad_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+    "link_kinds": { "type": "array", "uniqueItems": true, "items": { "enum": ["ph4", "h", "d", "n", "t", "v"] }, "description": "Key kinds that at least two of the cluster's ads share." },
+    "venue_only": { "type": "boolean" },
+    "method": { "type": "string" }
+  }
+}

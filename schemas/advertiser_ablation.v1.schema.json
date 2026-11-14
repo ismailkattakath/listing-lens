@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "advertiser_ablation.v1.schema.json",
+  "title": "advertiser_ablation.v1",
+  "description": "The advertiser each ad lands in when the clustering runs with one key kind dropped (or photos added as a key). Written by derive-advertisers to derived/advertisers_ablation.jsonl; the real clusters (advertiser.v1) are unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "variant",
+    "site",
+    "ad_id",
+    "advertiser_id",
+    "n_ads",
+    "link_kinds"
+  ],
+  "properties": {
+    "schema": {
+      "const": "advertiser_ablation.v1"
+    },
+    "variant": {
+      "enum": [
+        "baseline",
+        "-desc",
+        "-name",
+        "-title",
+        "-phone4",
+        "-handle",
+        "-venue",
+        "+photo"
+      ]
+    },
+    "site": {
+      "type": "string"
+    },
+    "ad_id": {
+      "type": "string"
+    },
+    "advertiser_id": {
+      "type": "string",
+      "description": "a hash of the cluster's ad set: equal to the baseline id means the same cluster"
+    },
+    "n_ads": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "link_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "the kinds that linked this cluster under the variant"
+    }
+  }
+}

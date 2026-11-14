@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "listing-lens"
+version = "0.1.0"
+description = "Typed, append-only pipeline for studying public listing pages."
+requires-python = ">=3.12"
+dependencies = [
+  "scrape-harness", # the generic core: CLI, crawl, approvals, store, contracts (a flake input)
+  "beautifulsoup4",
+  "geopy",
+  "psycopg", # export-db: the derived Postgres copy (ADR-0014)
+  # llens services (service vocabulary, plan v2): normalise -> match -> negation; SKOS via rdflib
+  "spacy",
+  "spacy-lookups-data",
+  "ftfy",
+  "pyicu",
+  "emoji",
+  "rdflib",
+  "negspacy",
+  "abbreviation-extractor",
+]
+
+[project.scripts]
+# The CLI is the harness's; pipeline.toml (shipped next to the package) makes it listing-lens'.
+llens = "scrape_harness.cli:main"
+# the private Grafana boards (src/listing_lens/grafana): build, --check, apply
+llens-grafana = "listing_lens.grafana.apply:cli"
+
+# Plug-ins (the source, extractors, geocoders) and the analysis commands are declared ONCE, in
+# pipeline.toml [plugins]; the harness's own drivers come from its entry points.
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/listing_lens"]
+
+[tool.ruff]
+extend-exclude = [".claude/statusline.py"]  # generated from the harness (llens claude-settings --write)
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+# ruff format owns line length; long string literals it cannot split are not a lint error.
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

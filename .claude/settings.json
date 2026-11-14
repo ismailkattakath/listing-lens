@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(llens *)",
+      "Bash(nix build *)",
+      "Bash(nix flake check*)",
+      "Bash(nix flake show*)",
+      "Bash(nix develop*)",
+      "Bash(nix fmt*)",
+      "Bash(nix run .#env-doctor*)",
+      "Bash(nix run .#leak-gate*)",
+      "Bash(pytest*)",
+      "Bash(ruff *)",
+      "Bash(check-jsonschema *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Edit(**/*.jsonl)",
+      "Edit(**/*.ndjson)",
+      "Edit(**/*.csv)",
+      "Edit(**/*.tsv)",
+      "Edit(**/*.parquet)",
+      "Edit(**/*.sqlite)",
+      "Edit(**/*.db)",
+      "Edit(./data/**)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.envrc.local)",
+      "Bash(printenv GEOCODE_KEY)",
+      "Bash(printenv LLENS_DB_URL)",
+      "Bash(git add -f *)",
+      "Bash(git add --force *)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/statusline.py\"",
+    "refreshInterval": 5
+  },
+  "extraKnownMarketplaces": {
+    "kattakath": {
+      "source": {
+        "source": "github",
+        "repo": "kattakath/skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "scrape-harness@kattakath": true
+  }
+}

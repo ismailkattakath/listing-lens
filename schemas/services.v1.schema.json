@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "services.v1.schema.json",
+  "title": "services.v1",
+  "description": "`llens services` (offline, reparse-safe): the service concepts one ad's latest listing version names, from the operator's SKOS vocabulary (his DATA, never in git; its path is given to the stage). One record per (site, ad_id) in derived/services.latest.jsonl. DRAFT, pipeline-engineer + analyst, 2026-11-08.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "site", "ad_id", "fetched_at", "parser", "vocab_version", "method", "online_services_offered", "mentions"],
+  "properties": {
+    "schema": { "const": "services.v1" },
+    "site": { "type": "string" },
+    "ad_id": { "type": "string" },
+    "fetched_at": { "type": "string", "format": "date-time", "description": "the listing version read (its fetched_at)" },
+    "parser": { "type": ["string", "null"], "description": "that version's derived.method (the parser that produced its text)" },
+    "vocab_version": { "type": "string", "description": "the SKOS scheme's owl:versionInfo" },
+    "method": { "type": "string", "description": "the matcher version, e.g. services@1:ftfy+icu-skeleton+demojize+phrasematcher+negspacy" },
+    "eval_adjacent": {
+      "type": ["boolean", "null"],
+      "description": "analyst rule R1: true when this ad IS a blind-eval ad (by ad id, from the persona split) or shares a CURRENT v2 operator with one. Discovery/tuning tools filter on it, before and after the freeze. null only for an empty vocabulary. Absent in records written before li services carried it."
+    },
+    "online_services_offered": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "the page's own services list as codes (listing site.<record_key>.services[].code), when shown"
+    },
+    "mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["concept", "label_matched", "field", "start", "end", "stance"],
+        "properties": {
+          "concept": { "type": "string", "description": "the SKOS concept's skos:notation" },
+          "label_matched": { "type": "string", "description": "the vocabulary label (pref/alt/hidden) that matched" },
+          "field": { "enum": ["title", "description"] },
+          "start": { "type": "integer", "minimum": 0, "description": "character offset in the ORIGINAL field text" },
+          "end": { "type": "integer", "minimum": 0 },
+          "stance": { "enum": ["offered", "refused", "unclear"] }
+        }
+      }
+    }
+  }
+}

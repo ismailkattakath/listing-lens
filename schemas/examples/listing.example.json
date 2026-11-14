@@ -1,0 +1,87 @@
+{
+  "schema": "listing.v1",
+  "ad_id": "1000001",
+  "fetched_at": "2026-01-15T12:00:00Z",
+  "fetch_reason": "new",
+  "raw_ref": {
+    "path": "raw/example.invalid/1000001/2026-01-15T12-00-00Z.html.gz",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "bytes": 4096
+  },
+  "source": {
+    "site": "example.invalid",
+    "url": "https://www.example.invalid/listings/sample-list-a/sample-region/exampleton_synthetic_example_ad-1000001",
+    "category": "personals",
+    "subcategory": "sample-list-a",
+    "region": "sample-region"
+  },
+  "content": {
+    "title": "Synthetic example ad title",
+    "description": "Synthetic body text. Incall near Example St & Sample Ave.",
+    "contact": {
+      "phone_masked": null,
+      "email_masked": null,
+      "website": null
+    },
+    "media_urls": []
+  },
+  "time": {
+    "first_published": "2026-01-01T09:00:00-05:00",
+    "bumped_at": "2026-01-15T06:30:00-05:00"
+  },
+  "location": {
+    "city_label": "Exampleton",
+    "pin": {
+      "lat": 43.7,
+      "lon": -79.4,
+      "approximate": true
+    },
+    "text_hint": {
+      "raw": "Example St & Sample Ave",
+      "kind": "intersection",
+      "extractor": "gta-hints@6"
+    },
+    "geocode": {
+      "provider": "google-geocoding",
+      "status": "OK",
+      "formatted": "Example St & Sample Ave, Exampleton, ON, Canada",
+      "point": {
+        "lat": 43.701,
+        "lon": -79.401
+      },
+      "types": [
+        "intersection"
+      ],
+      "precise": true,
+      "partial": false,
+      "place_id": "synthetic-place-id",
+      "at": "2026-01-15T12:05:00Z"
+    },
+    "city_centre": {
+      "label": "Exampleton",
+      "point": {
+        "lat": 43.75,
+        "lon": -79.45
+      },
+      "provider": "google-geocoding"
+    }
+  },
+  "site": {
+    "sample": {
+      "city_code": "exampleton",
+      "name": null,
+      "age": null,
+      "ethnicity": null,
+      "service_mode": [],
+      "page_schema_type": "AdultEntertainment"
+    }
+  },
+  "derived": {
+    "method": "gta-hints@6+google-geocoding+haversine",
+    "km_pin_text": 0.137,
+    "km_pin_city": 6.84,
+    "km_text_city": 6.71,
+    "pin_verdict": "at_address",
+    "confidence": "high"
+  }
+}

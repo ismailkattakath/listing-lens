@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "geocode.v1.schema.json",
+  "title": "geocode.v1",
+  "description": "One geocoder answer for one query string, in a CACHE (rewritten, not append-only). Google Maps Platform terms allow caching latitude/longitude for at most 30 days, while place_id may be kept indefinitely. So the entry is keyed by place_id: `result.point` is present only until `expires_at`, and `llens geocode` re-resolves a stale entry by place_id and strips expired points when it rewrites the cache. The result shape is listing.v1's own geocode block, referenced, not copied.",
+  "type": "object",
+  "required": ["schema", "provider", "query", "place_id", "resolved_at", "expires_at", "result"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "geocode.v1" },
+    "provider": { "type": "string" },
+    "query": { "type": "string", "description": "The exact string sent (phrase plus region suffix). Never the request URL: it carries the key." },
+    "place_id": { "type": ["string", "null"], "description": "The provider's stable place id: the durable cache key, kept indefinitely." },
+    "resolved_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time", "description": "resolved_at + the provider's coordinate-cache limit (30 days for Google). After it, result.point must be gone." },
+    "result": { "$ref": "listing.v1.schema.json#/$defs/geocode" }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "panel.v1.schema.json",
+  "title": "panel.v1",
+  "description": "An H4 panel: the advertisers whose ads are revisited on a schedule (DATA derived/panels/<panel_id>.json, written by `llens panel build`). Its sha256 is the panel_hash a standing approval signs, so any edit needs a new signature.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "panel_id", "created_at", "seed", "site", "region", "subcategories", "advertisers"],
+  "properties": {
+    "schema": { "const": "panel.v1" },
+    "panel_id": { "type": "string", "pattern": "^panel-[0-9TZ]+-[0-9]+$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "seed": { "type": "integer" },
+    "site": { "type": "string" },
+    "region": { "type": "string" },
+    "subcategories": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "advertisers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["advertiser_id", "ads", "card_keys"],
+        "properties": {
+          "advertiser_id": { "type": "string", "pattern": "^(adv-|v1\\.1:)[0-9a-f]{12}$" },
+          "ads": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ad_id", "url"],
+              "properties": { "ad_id": { "type": "string" }, "url": { "type": "string", "format": "uri" } }
+            }
+          },
+          "card_keys": { "type": "array", "items": { "type": "string", "pattern": "^(n|t):.+$" }, "description": "The name/title keys a list card can show: how a NEW ad is recognised as this advertiser's." }
+        }
+      }
+    }
+  }
+}

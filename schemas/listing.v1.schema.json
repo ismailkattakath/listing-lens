@@ -1,0 +1,650 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "listing.v1.schema.json",
+  "title": "listing.v1",
+  "description": "One VERSION of one ad's page, source-agnostic. Append-only JSONL: a new line is written when an ad_id is first seen, when a list-card fact changes, or when the stored version is older than 7 days. The latest version of an ad is the line with the greatest fetched_at for its (source.site, ad_id). Raw fetches leave text_hint/geocode/city_centre/derived null; `llens derive` fills them in a rebuildable copy. Field names follow schema.org where one exists (GeoCoordinates, datePublished).",
+  "type": "object",
+  "required": [
+    "schema",
+    "ad_id",
+    "source",
+    "fetched_at",
+    "content",
+    "location"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "listing.v1"
+    },
+    "ad_id": {
+      "type": "string",
+      "description": "The site's own stable id (from the ad URL). Survives bumps and edits."
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this version of the ad page was fetched (UTC)."
+    },
+    "fetch_reason": {
+      "enum": [
+        "new",
+        "card_changed",
+        "stale_7d",
+        "manual",
+        "reparse",
+        "panel",
+        "recruit"
+      ],
+      "description": "Why this version exists. `reparse` = re-extracted OFFLINE from the saved snapshot (raw_ref) with a newer parser; fetched_at then stays the page's original fetch time. `panel` = a scheduled revisit of a panel advertiser's ad (the standing approval's panel). `recruit` = a one-off sample of ads seen on list cards but never opened (fetch-ads --select recruit)."
+    },
+    "raw_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "description": "The gzipped snapshot of the ad page this version was parsed from, under $LLENS_DATA (never in the repo).",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^raw/[^/]+/[^/]+/[^/]+\\.html\\.gz$",
+          "description": "Relative to the data dir."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Of the UNCOMPRESSED HTML bytes."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Uncompressed length."
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "site",
+        "url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "type": "string",
+          "examples": [
+            "example.invalid"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subcategory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The site's region the ad is listed under (the source's region slug)."
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "title",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "description": "Whole body text, never truncated. Line breaks are kept as \\n (the source's parser @3); spaces collapse within a line and blank lines are dropped."
+        },
+        "contact": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "phone_masked": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Exactly as the page shows it BEFORE 'show' (e.g. the last digits only). The full value is never requested."
+            },
+            "email_masked": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Exactly as shown before 'show' (e.g. the domain only). Never the full address."
+            },
+            "website": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "As shown before 'show'; null when the page hides the row."
+            },
+            "whatsapp": {
+              "type": "boolean",
+              "description": "A WhatsApp contact row is shown. The page shows only a button, never a value (the source's parser @4)."
+            }
+          }
+        },
+        "media_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "Public URLs only; media is never downloaded."
+        }
+      }
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "first_published": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "schema.org datePublished as the page states it (keeps its own offset)."
+        },
+        "bumped_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "Last bump/repost at fetch time, site-local wall time converted with an explicit zone; null if the absolute and relative texts disagree."
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "city_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The city/area the advertiser filed the ad under (human-chosen)."
+        },
+        "pin": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/geo"
+            }
+          ],
+          "description": "The site's own map pin (schema.org GeoCoordinates when the page carries them; approximate)."
+        },
+        "text_hint": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/text_hint"
+            }
+          ]
+        },
+        "geocode": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/geocode"
+            }
+          ]
+        },
+        "city_centre": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "label",
+                "point",
+                "provider"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "point": {
+                  "$ref": "#/$defs/geo"
+                },
+                "provider": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "description": "Site-specific facts, one key per source module. The core never depends on these.",
+      "$ref": "source-site.v1.schema.json"
+    },
+    "derived": {
+      "type": "object",
+      "description": "Recomputable measurements. Never hand-edited; each carries the method that produced it.",
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "examples": [
+            "gta-hints@6+google-geocoding+haversine"
+          ]
+        },
+        "km_pin_text": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "km_pin_city": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "km_text_city": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pin_verdict": {
+          "enum": [
+            "at_address",
+            "near_address",
+            "city_default",
+            "near_city",
+            "neither",
+            "no_pin",
+            "no_text",
+            null
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medhigh",
+            "medium",
+            "low",
+            "none"
+          ]
+        },
+        "location_valid_pin": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "false when the pin is outside the label's region (location_region_test: its census divisions, else > REGION_KM from the label centre); null without a pin or a test."
+        },
+        "location_valid_text": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "false when the text geocode is > REGION_KM from the label centre; null without one."
+        },
+        "location_invalid_reason": {
+          "enum": [
+            "out_of_region_pin",
+            "out_of_region_text",
+            "both",
+            "out_of_region_place",
+            "unresolvable",
+            null
+          ],
+          "description": "Why a location is not usable for this ad; null when nothing is flagged. Raw points are kept. out_of_region_place: the final place point (place_point) is out of region while the raw pin/text are not flagged."
+        },
+        "geocode_decision": {
+          "enum": [
+            "auto_close",
+            "no_pin",
+            "city_default_pin",
+            "far",
+            "out_of_region",
+            null
+          ],
+          "description": "The resolution rule for a precise text point: auto_close (<= AUTO_ACCEPT_KM from a real in-region pin) is accepted; every other value goes to a human place check."
+        },
+        "place_decision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The place decision applied to this ad (place_apply): operator accept_google | pick_alternative | other_place, machine text_only_verified | auto_alternative | review, derive's auto_close; null for a bare pin or nothing."
+        },
+        "place_decided_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "operator (a place-review batch), place-check@N, or derive's method (auto_close); null otherwise."
+        },
+        "place_decision_status": {
+          "enum": [
+            "applied",
+            "stale_group",
+            "stale_point",
+            "no_google_point",
+            "missing_alternative",
+            "geocode_pending",
+            "geocode_failed",
+            "rejected_hint_number",
+            "review",
+            "osm_unparsed",
+            "osm_no_way",
+            "osm_gap_too_large",
+            "osm_not_near_label",
+            "osm_ambiguous",
+            "osm_no_label_centre",
+            "osm_no_snapshot",
+            null
+          ],
+          "description": "applied: place_point is set by the decision; any other value: the decision did not produce a point, and why."
+        },
+        "place_review_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "<batch>#<task> of the operator decision."
+        },
+        "place_point": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lon": {
+              "type": "number"
+            }
+          },
+          "description": "The final point for this ad (a Google coordinate except for source pin: derived is rebuilt within the 30-day TTL)."
+        },
+        "place_point_source": {
+          "enum": [
+            "google",
+            "alternative",
+            "operator_geocode",
+            "operator_osm",
+            "machine_verified",
+            "pin",
+            null
+          ]
+        },
+        "place_cache_ref": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "candidate": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "description": "The geocode-cache entry a Google-sourced place_point came from (candidate = index into its candidates, null = the answer itself); export-db re-reads the coordinate through it."
+        },
+        "place_gold_v2": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "true: the operator decision is on an address-gold-v2 ad. Never a gold label source."
+        },
+        "location_valid_place": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "false when place_point is > REGION_KM from the label centre (flagged, never removed); null without one."
+        },
+        "place_osm": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The OSM fallback for an other_place text whose Google answer was rejected: google (its status), status, names (OSM ways per road), gap_km (closest approach, <= T_osm), near_label (approaches within LABEL_KM of the label centre)."
+        },
+        "location_region_test": {
+          "enum": [
+            "boundary",
+            "radius",
+            null
+          ],
+          "description": "Which region test decided location_valid_*: boundary = inside the union of the label's 2021 census divisions (+ EDGE_M), radius = <= REGION_KM from the label centre (a label with no CD mapping); null without a centre or mapping."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "geo": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "approximate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "text_hint": {
+      "type": "object",
+      "required": [
+        "raw",
+        "kind",
+        "extractor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "The location phrase exactly as written in the ad."
+        },
+        "kind": {
+          "enum": [
+            "postal",
+            "address",
+            "label",
+            "intersection",
+            "landmark",
+            "fsa",
+            "street",
+            "area"
+          ],
+          "description": "street = one road with no cross street (or a city + highway); area = a neighbourhood or \"airport area\". Neither is a point: derive records their geocode as precise=false."
+        },
+        "query": {
+          "type": "string",
+          "description": "The geocodable phrase an alias stands for (e.g. a mall abbreviation's full name); absent when raw is geocoded as written."
+        },
+        "extractor": {
+          "type": "string",
+          "description": "Which extractor version produced it (method tag)."
+        }
+      }
+    },
+    "geocode": {
+      "type": "object",
+      "required": [
+        "provider",
+        "status",
+        "at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "examples": [
+            "google-geocoding"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "formatted": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "point": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/geo"
+            }
+          ]
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "precise": {
+          "type": "boolean",
+          "description": "intersection / street_address / premise / establishment / postal_code, i.e. not a centroid."
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "place_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "location_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Google's geometry.location_type: ROOFTOP | RANGE_INTERPOLATED | GEOMETRIC_CENTER | APPROXIMATE (its own confidence in the point)."
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 3,
+          "description": "Up to 3 results of the same request, the answer first, so a human check can pick another match.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "point"
+            ],
+            "properties": {
+              "formatted": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "point": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/geo"
+                  }
+                ]
+              },
+              "types": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "location_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "place_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

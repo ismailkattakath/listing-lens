@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "place_check.v1.schema.json",
+  "title": "place_check.v1",
+  "description": "One decision on one of derive's review cases (no_pin, far, city_default_pin, a rejected hint-number point), in DATA decisions/place-check.jsonl. `llens place-check` writes decided_by = place-check@N by the analyst's frozen rules (plan-v2 addendum, rules_sha); a human batch adds its own rows. Never text: hint kinds, reasons, criteria, points.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "site", "ad_id", "case", "decision", "reason", "decided_at", "decided_by"],
+  "properties": {
+    "schema": { "const": "place_check.v1" },
+    "site": { "type": "string" },
+    "ad_id": { "type": "string" },
+    "case": { "enum": ["no_pin", "far", "city_default_pin", "rejected_hint_number"] },
+    "decision": { "enum": ["text_only_verified", "auto_alternative", "review", "human_accept", "human_reject", "human_alternative"] },
+    "reason": { "type": ["string", "null"], "description": "why it went to review, e.g. sources_disagree:osm_unjudged; null when decided" },
+    "hint_kind": { "type": ["string", "null"] },
+    "decided_at": { "type": "string", "format": "date-time" },
+    "decided_by": { "type": "string" },
+    "method": { "type": "string" },
+    "rules_sha": { "type": "string", "description": "sha256 prefix of the rules file the decision follows" },
+    "t_osm_km": { "type": ["number", "null"] },
+    "snapped_by_bias_a": { "type": ["boolean", "null"], "description": "addendum D(a): an unbiased candidate > T_osm away (hard exclusion); null = no unbiased candidate stored" },
+    "locality_mismatch_b": { "type": ["boolean", "null"], "description": "addendum D(b): Google's locality != the label (recorded only)" },
+    "alternative": { "type": "integer", "minimum": 1, "description": "auto_alternative: the index of the chosen stored candidate" },
+    "point": { "$ref": "listing.v1.schema.json#/$defs/geo" },
+    "criteria": { "type": "object", "description": "A.1-A.6 per the addendum: c1_type, c2_number, c3_unambiguous, osm_coverage, c4_osm(_km), name_match, c5_landmark(_matches), c6_label(_km), judged_as, fail" }
+  }
+}

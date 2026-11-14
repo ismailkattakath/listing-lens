@@ -1,0 +1,89 @@
+{
+  "nodes": {
+    "kattakath-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1794607114,
+        "narHash": "sha256-VE1tMy7oBemQp3N0IDxk1HPp4nuFPbfGzspob2OWCMo=",
+        "owner": "kattakath",
+        "repo": "skills",
+        "rev": "be5d17d513f5dabb00f4bf617200311c5d9493ae",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kattakath",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1792949843,
+        "narHash": "sha256-kqilDNgied/b97sKLUjXlRzmRvP2nDZKLBJ6SnA3Qz0=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d176bec6d3f7dc613eb18ae8cec9397610ef826f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "scrape-harness": "scrape-harness",
+        "treefmt-nix": "treefmt-nix"
+      }
+    },
+    "scrape-harness": {
+      "inputs": {
+        "kattakath-skills": "kattakath-skills",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "treefmt-nix": [
+          "treefmt-nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794621364,
+        "narHash": "sha256-/YHDLMFdox5Z6AbJwEzI5JS2ekGlW4gbGd/msDlDxIE=",
+        "owner": "ismailkattakath",
+        "repo": "scrape-harness",
+        "rev": "873de43e01971a573ad70bc45bf69230b7d5fc46",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ismailkattakath",
+        "repo": "scrape-harness",
+        "type": "github"
+      }
+    },
+    "treefmt-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791885023,
+        "narHash": "sha256-C3alQ2MEt0zVrUSho5NUDo3jmhbff72++bfwoqT9Omo=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "0d6d739a833ba9a9c93034862e4a7b061a062a1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

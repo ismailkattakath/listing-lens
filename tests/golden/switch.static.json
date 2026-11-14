@@ -1,0 +1,421 @@
+{
+ "files": {
+  "advertiser_links": [
+   "derived/advertiser_links.jsonl",
+   "advertiser_link.v1"
+  ],
+  "advertisers": [
+   "derived/advertisers.jsonl",
+   "advertiser.v1"
+  ],
+  "advertisers_ablation": [
+   "derived/advertisers_ablation.jsonl",
+   "advertiser_ablation.v1"
+  ],
+  "advertisers_v1": [
+   "derived/advertisers_v1.jsonl",
+   "advertiser.v1"
+  ],
+  "advertisers_v2": [
+   "derived/advertisers_v2.jsonl",
+   "advertiser.v2"
+  ],
+  "derived": [
+   "derived/listings.latest.jsonl",
+   "listing.v1"
+  ],
+  "events": [
+   "events.jsonl",
+   "event.v1"
+  ],
+  "findings": [
+   "findings.jsonl",
+   "finding.v1"
+  ],
+  "geocodes": [
+   "geocode-cache.jsonl",
+   "geocode.v1"
+  ],
+  "listings": [
+   "listings.jsonl",
+   "listing.v1"
+  ],
+  "observations": [
+   "observations.jsonl",
+   "observation.v1"
+  ],
+  "place_check": [
+   "decisions/place-check.jsonl",
+   "place_check.v1"
+  ],
+  "place_check_pending": [
+   "derived/place-check.pending.jsonl",
+   "place_check_pending.v1"
+  ],
+  "services": [
+   "derived/services.latest.jsonl",
+   "services.v1"
+  ]
+ },
+ "hook": {
+  "LLENS_NETWORK_APPROVED=1 llens fetch-ads": "ask",
+  "curl -s https://www.example.invalid/": "block",
+  "echo $GEOCODE_KEY": "block",
+  "llens ab --subcategory x": "block",
+  "llens approve aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "block",
+  "llens browser open": "ask",
+  "llens cooldown clear --site s --reason r": "ask",
+  "llens cooldown status": "allow",
+  "llens crawl resume": "block",
+  "llens crawl-lists --driver fixture --subcategory x": "allow",
+  "llens crawl-lists --subcategory x": "block",
+  "llens derive": "allow",
+  "llens derive --provider fixture-geocoding": "allow",
+  "llens extract": "allow",
+  "llens fetch-ads": "block",
+  "llens fetch-ads --approve-network": "ask",
+  "llens fetch-ads --dry-run": "allow",
+  "llens geocode": "block",
+  "llens geocode --geocoder fixture": "allow",
+  "llens plan crawl-lists --subcategory x --seed 1": "allow",
+  "llens qa-page": "allow",
+  "llens reparse": "allow",
+  "nix flake check": "allow",
+  "nix run .#default -- fetch-ads": "block",
+  "wget https://www.example.invalid/x": "block"
+ },
+ "runcard": {
+  "ab|dry-run": {
+   "inputs": [],
+   "outputs": [],
+   "stage": "utility"
+  },
+  "ab|plan": {
+   "inputs": [],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "utility"
+  },
+  "ab|run": {
+   "inputs": [],
+   "outputs": [
+    "DATA:derived/ab-2026-01-15T12_00_00Z.json",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.log.jsonl",
+    "DATA:events.jsonl",
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123"
+   ],
+   "stage": "utility"
+  },
+  "cooldown|dry-run": {
+   "inputs": [
+    "DATA:events.jsonl"
+   ],
+   "outputs": [],
+   "stage": "utility"
+  },
+  "cooldown|plan": {
+   "inputs": [
+    "DATA:events.jsonl"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "utility"
+  },
+  "cooldown|run": {
+   "inputs": [
+    "DATA:events.jsonl"
+   ],
+   "outputs": [
+    "DATA:events.jsonl"
+   ],
+   "stage": "utility"
+  },
+  "crawl resume|dry-run": {
+   "inputs": [
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json"
+   ],
+   "outputs": [],
+   "stage": "utility"
+  },
+  "crawl resume|plan": {
+   "inputs": [
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "utility"
+  },
+  "crawl resume|run": {
+   "inputs": [
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json"
+   ],
+   "outputs": [
+    "DATA:observations.jsonl, listings.jsonl",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.log.jsonl",
+    "DATA:events.jsonl",
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123"
+   ],
+   "stage": "utility"
+  },
+  "crawl-lists|dry-run": {
+   "inputs": [],
+   "outputs": [],
+   "stage": "1/7"
+  },
+  "crawl-lists|plan": {
+   "inputs": [],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "1/7"
+  },
+  "crawl-lists|run": {
+   "inputs": [],
+   "outputs": [
+    "DATA:observations.jsonl",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.log.jsonl",
+    "DATA:events.jsonl",
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123"
+   ],
+   "stage": "1/7"
+  },
+  "derive|dry-run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-check.jsonl (machine place decisions)",
+    "DATA:decisions/place-review.*.jsonl (operator place decisions; win over the machine's)",
+    "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json (region by boundary, the site file's [boundaries]; absent = radius)"
+   ],
+   "outputs": [],
+   "stage": "6/7"
+  },
+  "derive|plan": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-check.jsonl (machine place decisions)",
+    "DATA:decisions/place-review.*.jsonl (operator place decisions; win over the machine's)",
+    "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json (region by boundary, the site file's [boundaries]; absent = radius)"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "6/7"
+  },
+  "derive|run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-check.jsonl (machine place decisions)",
+    "DATA:decisions/place-review.*.jsonl (operator place decisions; win over the machine's)",
+    "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json (region by boundary, the site file's [boundaries]; absent = radius)"
+   ],
+   "outputs": [
+    "DATA:derived/listings.latest.jsonl",
+    "DATA:derived/summary.json"
+   ],
+   "stage": "6/7"
+  },
+  "extract|dry-run": {
+   "inputs": [
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [],
+   "stage": "4/7"
+  },
+  "extract|plan": {
+   "inputs": [
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "4/7"
+  },
+  "extract|run": {
+   "inputs": [
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [
+    "stdout:JSON lines"
+   ],
+   "stage": "4/7"
+  },
+  "fetch-ads|dry-run": {
+   "inputs": [
+    "DATA:observations.jsonl",
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [],
+   "stage": "2/7"
+  },
+  "fetch-ads|plan": {
+   "inputs": [
+    "DATA:observations.jsonl",
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "2/7"
+  },
+  "fetch-ads|run": {
+   "inputs": [
+    "DATA:observations.jsonl",
+    "DATA:listings.jsonl"
+   ],
+   "outputs": [
+    "DATA:listings.jsonl",
+    "DATA:raw/example.invalid/ (3 ad snapshots)",
+    "DATA:derived/samples/2026-01-15T12_00_00Z-x-desktop-abc123.jsonl",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.json",
+    "DATA:runs/2026-01-15T12_00_00Z-x-desktop-abc123.log.jsonl",
+    "DATA:events.jsonl",
+    "STATE:crawlee/request_queues/2026-01-15t12-00-00z-x-desktop-abc123"
+   ],
+   "stage": "2/7"
+  },
+  "geocode|dry-run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-review.*.jsonl (the operator's other_place texts; --only place-review)"
+   ],
+   "outputs": [],
+   "stage": "5/7"
+  },
+  "geocode|plan": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-review.*.jsonl (the operator's other_place texts; --only place-review)"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "5/7"
+  },
+  "geocode|run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:geocode-cache.jsonl",
+    "DATA:decisions/place-review.*.jsonl (the operator's other_place texts; --only place-review)"
+   ],
+   "outputs": [
+    "DATA:geocode-cache.jsonl"
+   ],
+   "stage": "5/7"
+  },
+  "migrate|dry-run": {
+   "inputs": [
+    "OLD:every file"
+   ],
+   "outputs": [],
+   "stage": "utility"
+  },
+  "migrate|plan": {
+   "inputs": [
+    "OLD:every file"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "utility"
+  },
+  "migrate|run": {
+   "inputs": [
+    "OLD:every file"
+   ],
+   "outputs": [
+    "DATA:data files",
+    "STATE:state files"
+   ],
+   "stage": "utility"
+  },
+  "qa-page|dry-run": {
+   "inputs": [
+    "DATA:derived/listings.latest.jsonl"
+   ],
+   "outputs": [],
+   "stage": "7/7"
+  },
+  "qa-page|plan": {
+   "inputs": [
+    "DATA:derived/listings.latest.jsonl"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "7/7"
+  },
+  "qa-page|run": {
+   "inputs": [
+    "DATA:derived/listings.latest.jsonl"
+   ],
+   "outputs": [
+    "DATA:derived/qa.html"
+   ],
+   "stage": "7/7"
+  },
+  "reparse|dry-run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:raw/"
+   ],
+   "outputs": [],
+   "stage": "3/7"
+  },
+  "reparse|plan": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:raw/"
+   ],
+   "outputs": [
+    "STATE:plans/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json"
+   ],
+   "stage": "3/7"
+  },
+  "reparse|run": {
+   "inputs": [
+    "DATA:listings.jsonl",
+    "DATA:raw/"
+   ],
+   "outputs": [
+    "DATA:listings.jsonl"
+   ],
+   "stage": "3/7"
+  }
+ },
+ "runcard_commands": [
+  "ab",
+  "cooldown",
+  "crawl resume",
+  "crawl-lists",
+  "derive",
+  "extract",
+  "fetch-ads",
+  "geocode",
+  "migrate",
+  "qa-page",
+  "reparse"
+ ],
+ "stages": [
+  "crawl-lists",
+  "fetch-ads",
+  "reparse",
+  "extract",
+  "geocode",
+  "derive",
+  "qa-page"
+ ]
+}

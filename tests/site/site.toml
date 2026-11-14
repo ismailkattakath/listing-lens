@@ -1,0 +1,70 @@
+# A SYNTHETIC site for the tests (invented places, a placeholder region); the real site's config lives in DATA.
+[region]
+km = 60.0  # the same radius as the real site's, so the region-rule tests keep their numbers
+
+[places]
+box = [43.0, -80.5, 44.5, -78.5]
+context = "Exampleton, Sample Province"
+
+[places.seeds]
+EP1 = "Example Plaza Shopping Centre, Northmere"
+SMC = "Sample Metro Centre station, Sampleville"
+QTC = "Quarry Town Centre, Exampleton"
+
+[vocab]
+hints = "hints.json"
+
+[geonames]
+country = "XX"
+admin1 = "99"
+
+[boards]
+lists = [["sample-list-a", "SA"], ["sample-list-b", "SB"]]
+mode_concepts = ["incall", "outcall"]
+local_time_place = "Exampleton"
+
+[boundaries]  # a SYNTHETIC boundary dataset (tests/test_boundaries.py builds its zip); the real one is DATA's
+dir = "gazetteer/sample-areas"
+zip = "sample-areas.zip"
+slim = "sample-areas.wgs84.geojson"
+source_crs = "EPSG:32617"  # a metric UTM zone over the synthetic places' coordinates
+id_field = "AREA_ID"
+fields = ["AREA_NAME", "AREA_TYPE"]
+keep = { field = "REGION_ID", value = "99" }
+dbf_encoding = "cp1252"
+describe = "the synthetic site's sample areas -> WGS84, simplified"
+
+# scrape-harness's tables (site_overlay). The source is a SYNTHETIC one (plugins/sample_source, modelled on the
+# harness's examples/example_site), loaded the way the real site's source is loaded from DATA: through
+# [pipeline.plugins] python_path/schema_dirs, relative to this file.
+[pipeline.consumer]
+default_site = "example.invalid"
+default_region = "sample-region"
+site_hosts = ["example.invalid"]
+
+[pipeline.plugins]
+python_path = ["plugins"]
+schema_dirs = ["plugins/sample_source/schemas"]
+
+[pipeline.plugins.sources]
+"example.invalid" = "sample_source.source:SampleSite"
+
+[pipeline.crawl.proxy]
+urls = ["http://proxy-a.example.invalid:8080", "http://proxy-b.example.invalid:8080"]
+choice = "random"
+user_secret = "proxy:example.invalid:user"
+password_secret = "proxy:example.invalid:password"
+
+[pipeline.crawl.refresh]
+steps = [
+  { name = "crawl-lists", args = ["--subcategory", "sample-list-a", "--stride", "15", "--seed", "1", "--max-pages", "60"] },
+  { name = "crawl-lists", args = ["--subcategory", "sample-list-b", "--stride", "1", "--start", "1", "--max-pages", "60"] },
+  { name = "fetch-ads", args = ["--max-fetches", "300"] },
+  { name = "reparse" },
+  { name = "geocode", paid_gate = { count_field = "pending" } },
+  { name = "derive" },
+  { name = "derive-advertisers", args = ["--method", "v1.1,v2"] },
+  { name = "places-resolve" },
+  { name = "services" },
+  { name = "export-db", args = ["--grant-role", "board_ro"], paid_exempt = "the project's own metered database: a fixed per-run cost with no per-item count" },
+]

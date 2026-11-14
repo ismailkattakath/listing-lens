@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-card.v1.schema.json",
+  "title": "source-card.v1",
+  "description": "The SYNTHETIC test source's own card facts under an observation.v1 record's `card` object (one key: the source's record_key); observation.v1 applies it by $ref.",
+  "properties": {
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "age": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "ethnicity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "rate": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "available": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

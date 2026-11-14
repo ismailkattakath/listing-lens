@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "advertiser_v2_link.v1.schema.json",
+  "title": "advertiser_v2_link.v1",
+  "description": "WHY advertisers@2 merged two ads: one row per (accepted v2 edge, key kind), from the same pair pass that builds advertisers_v2.jsonl. Written by `derive-advertisers --method v2` to derived/advertiser_v2_links.jsonl, ad_a < ad_b. Never ad text: keys follow advertiser_link.v1's conventions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "method",
+    "operator_id",
+    "site",
+    "ad_a",
+    "ad_b",
+    "link_kind",
+    "link_key",
+    "n_keys",
+    "edge_kinds",
+    "cross_subcategory",
+    "persona_edge"
+  ],
+  "properties": {
+    "schema": {
+      "const": "advertiser_v2_link.v1"
+    },
+    "method": {
+      "type": "string"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "the v2 operator both ads belong to (advertiser.v2 operator_id)"
+    },
+    "site": {
+      "type": "string"
+    },
+    "ad_a": {
+      "type": "string"
+    },
+    "ad_b": {
+      "type": "string"
+    },
+    "link_kind": {
+      "enum": [
+        "phone4",
+        "handle",
+        "name",
+        "title",
+        "desc",
+        "venue",
+        "image"
+      ]
+    },
+    "link_key": {
+      "type": "string",
+      "description": "phone4 = last 4 digits; handle, name, venue = normalised; title, desc, image (the upload id) = a 12-hex fingerprint, never the text. The smallest key when the pair shares several of this kind."
+    },
+    "n_keys": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "how many distinct keys of this kind the pair shares"
+    },
+    "edge_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "every kind on this edge: the pair rule's input (>= 1 strong or >= 2 kinds; >= 2 across subcategories)"
+    },
+    "cross_subcategory": {
+      "type": "boolean"
+    },
+    "persona_edge": {
+      "type": "boolean",
+      "description": "the edge also links personas (a handle, or a name plus another kind)"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+# NO DATA IN THIS REPO. Data lives under $LLENS_DATA (outside any git tree).
+*.jsonl
+*.ndjson
+*.csv
+*.parquet
+*.sqlite
+*.db
+/data/
+qa*.html
+*.html.gz
+/raw/
+summary.json
+
+# Secrets and per-operator env
+.env
+.env.*
+.envrc.local
+!.envrc
+
+# Build / tool state
+/result
+/result-*
+/.direnv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# generated site-host rules (llens claude-settings --write), from the site file
+.claude/settings.local.json

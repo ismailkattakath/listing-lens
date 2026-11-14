@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "advertiser.v2.schema.json",
+  "title": "advertiser.v2",
+  "description": "advertisers@2 (pairwise edges; analyst spec 2026-11-08), ONE record per ad, written by `derive-advertisers --method v2` to derived/advertisers_v2.jsonl next to v1's advertisers.jsonl (v1 unchanged). advertiser_id is a hash of the component's ad set: not stable across crawls, so join on ad_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "method",
+    "site",
+    "ad_id",
+    "operator_id",
+    "persona_id",
+    "n_ads",
+    "level",
+    "n_names",
+    "top_shared_key_share",
+    "edge_evidence",
+    "persona_edge_evidence"
+  ],
+  "properties": {
+    "schema": {
+      "const": "advertiser.v2"
+    },
+    "method": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string"
+    },
+    "ad_id": {
+      "type": "string"
+    },
+    "n_ads": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "level": {
+      "enum": [
+        "persona",
+        "operator"
+      ],
+      "description": "operator iff size>=5 AND names>=3 AND (top_shared_key_share>=0.5 OR names>=5): a judgement threshold"
+    },
+    "n_names": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "top_shared_key_share": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "edge_evidence": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "d",
+          "h",
+          "img",
+          "n",
+          "t",
+          "ph4",
+          "v"
+        ]
+      },
+      "description": "the kinds of the v2 edges that pulled this ad in; [] for a singleton"
+    },
+    "operator_id": {
+      "type": "string",
+      "pattern": "^v2:[0-9a-f]{12}$",
+      "description": "the v2 component (operator level): a hash of its ad set, not stable across crawls"
+    },
+    "persona_id": {
+      "type": "string",
+      "pattern": "^p2:[0-9a-f]{12}$",
+      "description": "the component over persona edges only (a shared non-email handle, or a name + another kind); always inside one operator"
+    },
+    "persona_edge_evidence": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "d",
+          "h",
+          "img",
+          "n",
+          "t",
+          "ph4",
+          "v"
+        ]
+      },
+      "description": "the kinds of the persona edges that pulled this ad in; [] for a singleton persona"
+    }
+  }
+}

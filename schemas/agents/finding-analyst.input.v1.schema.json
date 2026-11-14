@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agents/finding-analyst.input.v1.schema.json",
+  "title": "finding-analyst.input.v1",
+  "description": "What the finding-analyst subagent is handed. Its OUTPUT contract is finding.v1 itself (schemas/finding.v1.schema.json), so there is no second output schema to drift.",
+  "type": "object",
+  "required": ["schema", "hypothesis_id", "question", "summary", "register"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "finding-analyst.input.v1" },
+    "hypothesis_id": { "type": "string", "pattern": "^H[0-9]+$" },
+    "question": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "description": "The machine-computed numbers from `llens derive --summary` (summary.json). The agent interprets them; it never recomputes them.",
+      "required": ["method", "n_listings"],
+      "properties": {
+        "method": { "type": "string" },
+        "n_listings": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "register": {
+      "type": "array",
+      "description": "The current version of every finding (`llens findings current`).",
+      "items": { "$ref": "../finding.v1.schema.json" }
+    },
+    "snapshot": { "type": ["string", "null"] }
+  }
+}
