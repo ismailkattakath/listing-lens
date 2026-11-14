@@ -72,7 +72,12 @@ jobs:
       - name: nix flake check --all-systems --no-build
         run: nix flake check --all-systems --no-build
       # listing-lens builds spaCy from source (no binary cache has it at the pin), hence the long timeout.
-      # This runner's system (x86_64-linux), built: the package (pytest), ruff, the
+      # Ubuntu 23.10+ (so ubuntu-24.04) has AppArmor deny unprivileged user namespaces, which
+      # Chromium's sandbox needs: the browser tests die at launch (SIGTRAP) without this. A
+      # throwaway runner, so turning the restriction off here changes nothing else.
+      - name: allow unprivileged user namespaces (Chromium's sandbox)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # This runner's system (aarch64-linux), built: the package (pytest), ruff, the
       # schema gates, cli-smoke, formatting.
       - name: nix flake check
         run: nix flake check --print-build-logs
