@@ -1,5 +1,13 @@
 # listing-lens
 
+[![ci](https://github.com/ismailkattakath/listing-lens/actions/workflows/ci.yml/badge.svg)](https://github.com/ismailkattakath/listing-lens/actions/workflows/ci.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![Nix flake](https://img.shields.io/badge/Nix-flake-5277C3.svg?logo=nixos&logoColor=white)](flake.nix)
+
+Offline analysis of classified-listing crawls, built on
+[scrape-harness](https://github.com/ismailkattakath/scrape-harness). Every site specific lives outside this
+repository; the tests run on a synthetic site (`tests/site`).
+
 The operator's guide is [`CLAUDE.md`](CLAUDE.md); the design and every decision are in [`docs/design.md`](docs/design.md).
 
 ## `llens refresh`: the one on-demand update
@@ -34,3 +42,12 @@ secret exec ... -- llens refresh --approve-network --geocode-count N   # N = the
   in geocode and derive, so a newly resolved place reaches hints on the NEXT refresh (accepted).
 - **Timing (a hint, not a schedule):** ad publish times suggest ~1–2 am site-local time catches the evening peak.
   Each run adds a revisit, which feeds the price-trend, survival and sponsored questions.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security
+issues privately, as [SECURITY.md](SECURITY.md) describes. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## Licence
+
+[MIT](LICENSE) © 2026 Ismail Kattakath
