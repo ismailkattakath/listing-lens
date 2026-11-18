@@ -225,6 +225,9 @@ def cmd_geocode(args: argparse.Namespace) -> int:
     if args.dry_run:
         for q, (_, _, e) in sorted(todo.items()):
             print(json.dumps({"query": q, "how": "place_id" if e and e.get("place_id") else "search"}))
+        # The refresh's paid gate reads `pending` from THIS dry run (pipeline paid_gate.count_field).
+        # Without the line the gate found no count and refused every refresh at geocode.
+        print(json.dumps({"pending": len(todo), "requested": 0, "cap": args.max_requests}))
         return 0
     geo = _geocoder(args)
     asked = 0
