@@ -8,6 +8,11 @@ The version is the one in `pyproject.toml`.
 
 ## [Unreleased]
 
+### Documentation
+
+- ADR-0016 (proposed): how a run learns a list's length when the page no longer shows the last
+  page. Records the measurements and a bounded search; nothing is built.
+
 ### Fixed
 
 - `llens geocode --dry-run` now prints its `pending` count. The refresh's paid gate reads
