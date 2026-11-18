@@ -619,6 +619,75 @@ plug-in's NOTES.md). The site-agnostic rules they established:
 
 **Beat:** editing v1 in place (it would silently change every published v1 number); a weighted similarity score (it needs a threshold with no ground truth yet, whereas the pair rule is auditable edge by edge).
 
+## ADR-0016 — When a list no longer shows its last page (PROPOSED, 2026-11-18; not decided)
+
+**Status.** Proposed. Nothing here is built. The operator decides; until then a list whose page
+count cannot be read stops the crawl, which is the behaviour this record wants kept.
+
+**Context.** The list crawl reads a list's page count from page 1 (`crawl-lists`, "read from page 1
+when omitted") and plans its depth sample from it: `sample_weight = page_count / pages_sampled`
+(ADR-0001), and the depth decile is `⌊10·(page−1)/page_count⌋` (ADR-0010). A source's `page_count()`
+used to take the highest page number among the pager's links, because the pager linked the last page.
+
+Measured on 2026-11-18 against one source, by one refresh, two signed one-page runs and three page
+views by hand:
+
+| Observation | Value |
+|---|---|
+| Refresh: both list steps | "page count not found on page 1", retried to the maximum; 4 list requests; **0 observations written**; both steps still reported done |
+| The pager now | a "previous" control, the page entries, a "next" control; the entries are a **window of 5 nearby pages** |
+| Last-page link, ellipsis, or a results total on the page | **none found** |
+| The same list eleven days earlier | recorded page counts of **530** and **36** |
+| A page far past the end | the address is kept, **0 cards, no pager** (no clamp to the last page) |
+| A source rule "highest number shown", tried and reverted the same day | read **5** for the 530-page list |
+| A source rule "cards and no pager means one page", tried and reverted | would have read **1** for a list whose page 2 holds a full page of cards |
+
+Both reverted rules fail **silently**: the crawl runs, reports success, and covers about 1% of the
+long list. A loud stop is the better failure.
+
+**The question.** The depth sample needs the list's length before it picks pages, and the page no
+longer states it. How does a run learn it?
+
+| Option | Requests | Verdict |
+|---|---|---|
+| A. Read it from a far page | 1 | **Out**: measured, the source does not clamp |
+| B. Bounded search for the end | about 2·log2(N): 10 to 12 for N near 530, 6 to 8 for N near 36 | **Proposed** |
+| C. Follow "next" to the end | N | Out: it is a census, which the sample exists to avoid |
+| D. Reuse the last known count | 0 | Out as a default: wrong, and silently, as soon as the list changes |
+
+**Proposal (B).** "Past the end" has a signature the source can state: a list page with no cards and
+no pager. So the length is found by doubling a page number until that signature appears, then
+halving between the last full page and the first empty one.
+
+Open questions the operator settles before any code:
+
+1. **Where it lives.** The harness (every source gets it, behind a source-declared "is this page past
+   the end" test) or the source plug-in (one source's quirk stays with that source).
+2. **Its budget.** The search's requests must be inside the signed plan and its rate limit. A plan
+   signs `max_pages`; it needs a separate, signed ceiling for discovery, and the run card must show it.
+3. **Reuse.** Whether a count found by one refresh may seed the next one's search (a tight bracket
+   costs 2 to 4 requests), and how old it may be. A seed narrows the search; it never replaces it.
+4. **What a search page is.** Each probe is a real list page with cards. Recording them as
+   observations biases the sample toward the probed depths; discarding them wastes views. Proposed:
+   keep them, flagged as discovery, and leave them out of the weighted estimates.
+5. **Failure.** If the search does not converge inside its budget, the run stops with the bracket it
+   reached. It never falls back to a guess.
+
+**Also found, to fix whatever is decided here.**
+
+- A list step whose every request failed must not report done; a refresh then spends its ad budget on
+  stale targets (104 of 300 ad pages were gone that day).
+- A one-page run with a forced `--page-count` writes rows whose `page_count` and `sample_weight` are
+  not facts about the list. Nothing can supersede a list run, so such rows need a flag or a rule that
+  keeps them out of the weighted estimates.
+
+**What it beats.** Trusting the pager's visible numbers (measured wrong by two orders of magnitude)
+and a fixed count (no evidence it stays true).
+
+**Weakest assumption.** That "no cards and no pager" always means past the end. An interstitial or an
+error page would look the same to this test. What would settle it: the source also checks the
+response status and a known element of a normal list page before calling a page empty.
+
 ## Deliberately NOT built (and why)
 
 | Not built | Why |
