@@ -8,6 +8,12 @@ The version is the one in `pyproject.toml`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `llens geocode --dry-run` now prints its `pending` count. The refresh's paid gate reads
+  that count from the dry run; without it every refresh stopped at geocode with "its
+  --dry-run printed no pending" (seen on a refresh with 10 addresses queued, 2026-11-18).
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

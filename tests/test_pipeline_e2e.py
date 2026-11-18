@@ -38,9 +38,19 @@ def test_end_to_end(data_dir, capsys, no_sleep):
     assert main(["fetch-ads", *FIX]) == 0  # second run: nothing new, nothing changed -> no GET
     assert len(lines(data_dir / "listings.jsonl")) == 3
 
-    assert main(["geocode", *GEO]) == 0
-    assert main(["geocode", *GEO, "--dry-run"]) == 0  # everything answered is cached
     capsys.readouterr()
+    assert main(["geocode", *GEO, "--dry-run"]) == 0  # nothing cached yet
+    dry = [json.loads(x) for x in capsys.readouterr().out.splitlines() if x.startswith("{")]
+    queries = [d for d in dry if "query" in d]
+    assert queries  # the fixture run has addresses to geocode
+    # The paid gate's contract: the dry run names its count, and sends nothing.
+    assert dry[-1] == {"pending": len(queries), "requested": 0, "cap": dry[-1]["cap"]}
+
+    assert main(["geocode", *GEO]) == 0
+    capsys.readouterr()
+    assert main(["geocode", *GEO, "--dry-run"]) == 0  # everything answered is cached
+    after = [json.loads(x) for x in capsys.readouterr().out.splitlines() if x.startswith("{")]
+    assert [d["pending"] for d in after if "pending" in d] == [0]  # an empty queue still reports 0
     assert main(["derive", "--provider", "fixture-geocoding"]) == 0
     assert main(["qa-page"]) == 0
 
