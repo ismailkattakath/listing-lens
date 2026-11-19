@@ -8,6 +8,17 @@ The version is the one in `pyproject.toml`.
 
 ## [Unreleased]
 
+### Changed
+
+- The scrape-harness pin moves to f23f117, which ships ADR-0017 slice 1
+  (frontier-and-ledger sync): exit 14 for a parse or yield stop, the liveness
+  ledger, the fresh-sighting gate with `select_ads` lanes (revisit share hard
+  capped at rho = 0.2), and a signed `SyncPolicy` digest in every fetch-ads
+  plan. Plans and refresh approvals signed under the old pin no longer match:
+  plan them again. No golden in this repository moved. The DATA site plug-in's
+  e2e digest moves with the new run.v1 `list{}` and `ads{}` blocks and the
+  fetch-ads run card's selection line, so it needs re-recording.
+
 ### Fixed
 
 - `llens geocode --dry-run` now prints its `pending` count. The refresh's paid gate reads
