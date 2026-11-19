@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
 
-from scrape_harness import pipeline, store
+from scrape_harness import liveness, pipeline, policy, store
 from scrape_harness.cli import card, need_network
 from scrape_harness.interfaces import load
 
@@ -34,7 +34,7 @@ from . import derive, geocache, site
 from . import place_apply as pa
 from .commands import geocode_query
 
-LOADER = "export-db@22"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards)
+LOADER = "export-db@23"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards); @23: ad_observation_span read from scrape_harness.liveness (good crawls only, the ledger's gone join; + liveness, gone_run, readmitted, held_since; gone_source and the run-log gone attribution dropped)
 SCHEMA = "li"
 PHONE_DIR = "import/2026-11-07-phone-session"
 # The site specifics, read through the configured source and the site file's [pipeline.consumer]:
@@ -479,59 +479,21 @@ def _run_log_rows(d: Path) -> list[dict]:
 REVISIT_H = 4
 
 
-def gone_records(events: list[dict], run_logs: list[dict]) -> dict[tuple, dict]:
-    """{(site, ad_id): the EARLIEST gone record} from two sources.
-    1. events.jsonl kind=gone: the ad id from its url (structured; the authority).
-    2. a run log's `gone` line, which carries NO ad id: it is the ad of the line right before it in the same
-       run's log, which must be an ad `request` whose path ends in -<ad_id>; any other predecessor is not
-       attributed. Used only for a (run_id, ad_id) the events do not carry.
-    On DATA (2026-11-13) both give the same 51 (run_id, ad_id) pairs (48 ads, 5 runs)."""
-    found: dict[tuple, dict] = {}
-    for e in events:
-        if e["kind"] == "gone" and (aid := ad_id_from_path(e.get("url") or "")):
-            k = (e.get("run_id"), aid)
-            if k not in found or e["at"] < found[k]["at"]:
-                found[k] = {"site": e.get("site"), "at": e["at"], "reason": e.get("reason"), "src": "event"}
-    prev = None
-    for x in run_logs:  # in (run_id, seq) order, as built
-        if (
-            x["event"] == "gone"
-            and prev
-            and prev["run_id"] == x["run_id"]
-            and prev["seq"] == x["seq"] - 1
-            and prev["event"] == "request"
-            and prev["kind"] == "ad"
-            and (aid := ad_id_from_path(prev["path"] or ""))
-            and (x["run_id"], aid) not in found
-        ):
-            found[(x["run_id"], aid)] = {"site": None, "at": x["at"], "reason": None, "src": "run_log"}
-        prev = x
-    out: dict[tuple, dict] = {}
-    for (_run, aid), g in found.items():
-        k = (g["site"], aid)
-        if g["at"] is not None and (k not in out or g["at"] < out[k]["at"]):
-            out[k] = g
-    return out
-
-
-def observation_span_rows(observations, listings, events, run_logs) -> list[dict]:
-    """ONE row per (site, ad_id) li ever saw: first/last LIVE sighting (a list card's seen_at, or an ad fetch's
-    fetched_at; a reparse is offline and copies fetched_at, so it is no sighting), the gone record if any, and
-    status: gone (a gone record after the last live sighting) | still_listed (seen live >= REVISIT_H after
-    first_seen, and no later gone) | unknown (never revisited)."""
-    seen: dict[tuple, list] = {}
-    for o in observations:
-        seen.setdefault((o["site"], o["ad_id"]), []).append(o["seen_at"])
-    for r in listings:
-        if r["fetch_reason"] != "reparse":
-            seen.setdefault((r["site"], r["ad_id"]), []).append(r["fetched_at"])
-    gone = gone_records(events, run_logs)
+def observation_span_rows(observations, listings, events, runs) -> list[dict]:
+    """ONE row per (site, ad_id) with a LIVE sighting, read from the harness's liveness ledger
+    (scrape_harness.liveness, under the default SyncPolicy's rules): the ledger owns what a sighting is (a
+    GOOD crawl's list card, or an OK fetch; a reparse is offline and no sighting), the tombstone (the earliest
+    gone at or after the latest sighting, joined by the ledger's adkey rule) and the state (alive | tombstoned
+    | quarantined | held). An ad with no live sighting (only a bad crawl's cards) has no row.
+    On top, the survival label (GQM G6.Q4): status = gone (tombstoned) | still_listed (seen live >= REVISIT_H
+    after first_seen) | unknown (never revisited). Inputs are the RAW records: events in file order."""
+    led = liveness.build(observations, listings, events, runs, policy.DEFAULT.rules())
     rows = []
-    for k in sorted(seen):
-        ts = seen[k]
-        first, last = min(ts), max(ts)
-        g = gone.get(k) or gone.get((None, k[1]))  # a log-attributed gone carries no site
-        if g and g["at"] >= last:
+    for s in led.spans():
+        if s["first_seen"] is None:
+            continue
+        first, last = utc(s["first_seen"]), utc(s["last_seen"])
+        if s["status"] == "tombstoned":
             status = "gone"
         elif (last - first).total_seconds() >= REVISIT_H * 3600:
             status = "still_listed"
@@ -539,14 +501,17 @@ def observation_span_rows(observations, listings, events, run_logs) -> list[dict
             status = "unknown"
         rows.append(
             {
-                "site": k[0],
-                "ad_id": k[1],
+                "site": s["site"],
+                "ad_id": s["ad_id"],
                 "first_seen": first,
                 "last_seen": last,
-                "n_observations": len(ts),
-                "gone_at": g["at"] if g else None,
-                "gone_reason": g["reason"] if g else None,
-                "gone_source": g["src"] if g else None,
+                "n_observations": s["n_sightings"],
+                "gone_at": utc(s["gone_at"]),
+                "gone_reason": s["gone_reason"],
+                "gone_run": s["gone_run"],
+                "liveness": s["status"],
+                "readmitted": s["readmitted"],
+                "held_since": utc(s["held_since"]),
                 "status": status,
             }
         )
@@ -1187,7 +1152,7 @@ def build(now: datetime | None = None) -> tuple[dict[str, list[dict]], dict]:
     derived = _derived_rows(d, now)
     phone = _phone_rows(d, now)
     ads, merge = ads_rows(listings, derived, phone, obs, regions)
-    events, run_logs = _event_rows(d), _run_log_rows(d)
+    events, run_logs, runs = _event_rows(d), _run_log_rows(d), _run_rows(d)
     tables = {
         "region": regions,
         "viewpoint": viewpoint_rows(d),
@@ -1195,9 +1160,14 @@ def build(now: datetime | None = None) -> tuple[dict[str, list[dict]], dict]:
         "listings": listings,
         "derived": derived,
         "geocodes": _geocode_rows(now),
-        "runs": _run_rows(d),
+        "runs": runs,
         "run_logs": run_logs,
-        "ad_observation_span": observation_span_rows(obs, listings, events, run_logs),
+        "ad_observation_span": observation_span_rows(
+            _jsonl(d / "observations.jsonl"),
+            _jsonl(d / "listings.jsonl"),
+            [e["record"] for e in events],
+            [r["record"] for r in runs],
+        ),
         "ab_variants": _ab_rows(d),
         "events": events,
         "samples": _sample_rows(d),

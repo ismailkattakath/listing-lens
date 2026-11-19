@@ -18,6 +18,12 @@ The version is the one in `pyproject.toml`.
   plan them again. No golden in this repository moved. The DATA site plug-in's
   e2e digest moves with the new run.v1 `list{}` and `ads{}` blocks and the
   fetch-ads run card's selection line, so it needs re-recording.
+- `export-db@23`: `ad_observation_span` is read from the harness's liveness
+  ledger, not from a second copy of the sighting and gone rules. Only a good
+  crawl's cards count as sightings, a gone joins its ad by the ledger's rule,
+  and an OK fetch after a gone clears `gone_at`. New columns: `liveness`,
+  `gone_run`, `readmitted`, `held_since`. `gone_source` and the run-log gone
+  attribution were removed.
 
 ### Fixed
 

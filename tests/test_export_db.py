@@ -591,7 +591,7 @@ def test_a_missing_or_inconsistent_v2_edge_file_is_refused(data, fresh_db, monke
     assert code == 2 and "older" in err
     os.utime(links, (t, t))
     assert export(fresh_db, monkeypatch, capsys)[0] == 0
-    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@22",)]
+    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@23",)]
 
 
 def test_the_frozen_v1_record_loads_next_to_the_v1_1_default(data, fresh_db, monkeypatch, capsys):
@@ -1022,93 +1022,112 @@ def test_place_decisions_are_carried_and_a_stale_derive_is_refused(data, fresh_d
     assert export(fresh_db, monkeypatch, capsys)[0] == 0
 
 
-# ── survival: ad_observation_span (export-db@19) ──────────────────────────────────────────────
+# ── survival: ad_observation_span (export-db@19; @23: read from the harness's liveness ledger) ───────────
 
 
 def T(h):
     return datetime(2026, 1, 1, tzinfo=UTC) + __import__("datetime").timedelta(hours=h)
 
 
-def test_observation_span_statuses_and_the_gone_attribution():
-    """SYNTHETIC ids. 9000001 seen twice in one session (unknown), 9000002 revisited a day later (still_listed),
-    9000003 gone by an event, 9000004 gone by a log line attributed through the ad request right before it,
-    9000005 has a gone line whose predecessor is no ad request (not attributed), and a reparse is no sighting."""
-    obs = [
-        {"site": SITE, "ad_id": a, "seen_at": T(0)}
-        for a in ("9000001", "9000002", "9000003", "9000004", "9000005")
-    ]
-    listings = [
-        {"site": SITE, "ad_id": "9000001", "fetched_at": T(1), "fetch_reason": "new"},
-        {
-            "site": SITE,
-            "ad_id": "9000001",
-            "fetched_at": T(30),
-            "fetch_reason": "reparse",
-        },  # offline: ignored
-        {"site": SITE, "ad_id": "9000002", "fetched_at": T(24), "fetch_reason": "recruit"},
-    ]
-    events = [
-        {
-            "kind": "gone",
-            "run_id": "r1",
-            "site": SITE,
-            "at": T(100),
-            "reason": "expired_notice",
-            "url": "https://example.invalid/personals/x/synthetic-9000003?ref=1",
-        },
-        {
-            "kind": "gone",
-            "run_id": "r1",
-            "site": SITE,
-            "at": T(90),
-            "reason": "http_410",
-            "url": "https://example.invalid/personals/x/synthetic-9000003",
-        },  # earlier: wins
-        {"kind": "started", "run_id": "r1", "site": SITE, "at": T(80), "reason": None, "url": None},
-    ]
-    log = [
-        {"event": "request", "kind": "ad", "path": "/personals/x/synthetic-9000004"},
-        {"event": "gone", "kind": None, "path": None},
-        {"event": "request", "kind": "list", "path": "/personals/x/page-9000005"},
-        {"event": "gone", "kind": None, "path": None},  # predecessor is a LIST request: never attributed
-        {"event": "request", "kind": "ad", "path": "/personals/x/synthetic-9000003"},
-        {"event": "gone", "kind": None, "path": None},  # also an event: not double counted
-    ]
-    run_logs = [{"run_id": "r1", "seq": i, "at": T(110 + i), **x} for i, x in enumerate(log)]
-    rows = {r["ad_id"]: r for r in export_db.observation_span_rows(obs, listings, events, run_logs)}
-    st = {a: (r["status"], r["gone_source"], r["gone_reason"]) for a, r in rows.items()}
-    assert st == {
-        "9000001": ("unknown", None, None),
-        "9000002": ("still_listed", None, None),
-        "9000003": ("gone", "event", "http_410"),
-        "9000004": ("gone", "run_log", None),
-        "9000005": ("unknown", None, None),
+def Z(h):
+    return T(h).isoformat().replace("+00:00", "Z")
+
+
+def _obs(aid, h, crawl="c-good"):
+    return {
+        "site": SITE,
+        "ad_id": aid,
+        "seen_at": Z(h),
+        "crawl_id": crawl,
+        "ad_url": f"https://example.invalid/personals/x/synthetic-{aid}",
+        "list": {"page": 1, "position": 1},
     }
-    assert rows["9000001"]["n_observations"] == 2 and rows["9000001"]["last_seen"] == T(1)
-    assert rows["9000003"]["gone_at"] == T(90) and rows["9000004"]["gone_at"] == T(110 + 1)
+
+
+def _lst(aid, h, reason="new"):
+    return {
+        "ad_id": aid,
+        "fetched_at": Z(h),
+        "fetch_reason": reason,
+        "source": {"site": SITE, "url": f"https://example.invalid/personals/x/synthetic-{aid}"},
+    }
+
+
+def _gone(aid, h, reason="expired_notice", with_id=True, run="r1"):
+    e = {"kind": "gone", "run_id": run, "site": SITE, "at": Z(h), "reason": reason}
+    e["url"] = f"https://example.invalid/personals/x/synthetic-{aid}"
+    if with_id:
+        e["ad_id"] = aid
+    return e
+
+
+RUNS = [
+    {"run_id": "c-good", "command": "crawl-lists", "status": "completed", "list": {"status": "ok"}},
+    {"run_id": "c-drift", "command": "crawl-lists", "status": "completed", "list": {"status": "parse_drift"}},
+]
+
+
+def test_observation_span_statuses_come_from_the_liveness_ledger():
+    """SYNTHETIC ids. 9000001 seen twice in one session (unknown), 9000002 revisited a day later
+    (still_listed), 9000003 tombstoned by its EARLIEST gone (gone), 9000004 tombstoned by a url-only gone
+    (the ledger's url join), 9000005 held by a parse_failed; a reparse is no sighting."""
+    obs = [_obs(a, 0) for a in ("9000001", "9000002", "9000003", "9000004", "9000005")]
+    listings = [_lst("9000001", 1), _lst("9000001", 30, "reparse"), _lst("9000002", 24, "recruit")]
+    events = [
+        _gone("9000003", 100),
+        _gone("9000003", 90, "http_410"),  # earlier: the tombstone
+        _gone("9000004", 50, with_id=False),
+        {"kind": "parse_failed", "run_id": "r2", "site": SITE, "ad_id": "9000005", "at": Z(5)},
+        {"kind": "started", "run_id": "r1", "site": SITE, "at": Z(80)},
+    ]
+    rows = {r["ad_id"]: r for r in export_db.observation_span_rows(obs, listings, events, RUNS)}
+    st = {a: (r["status"], r["liveness"], r["gone_reason"]) for a, r in rows.items()}
+    assert st == {
+        "9000001": ("unknown", "alive", None),
+        "9000002": ("still_listed", "alive", None),
+        "9000003": ("gone", "tombstoned", "http_410"),
+        "9000004": ("gone", "tombstoned", "expired_notice"),
+        "9000005": ("unknown", "held", None),
+    }
+    assert rows["9000001"]["n_observations"] == 2 and rows["9000001"]["last_seen"] == T(1)  # reparse ignored
+    assert rows["9000003"]["gone_at"] == T(90) and rows["9000003"]["gone_run"] == "r1"
+    assert rows["9000005"]["held_since"] == T(5)
     assert rows["9000002"]["last_seen"] - rows["9000002"]["first_seen"] >= __import__("datetime").timedelta(
         hours=export_db.REVISIT_H
     )
 
 
-def test_a_sighting_after_a_gone_record_is_not_gone():
-    obs = [{"site": SITE, "ad_id": "9000006", "seen_at": T(0)}]
-    listings = [{"site": SITE, "ad_id": "9000006", "fetched_at": T(50), "fetch_reason": "new"}]
-    events = [
-        {
-            "kind": "gone",
-            "run_id": "r",
-            "site": SITE,
-            "at": T(10),
-            "reason": "expired_notice",
-            "url": "/x/synthetic-9000006",
-        }
+def test_an_ok_fetch_after_a_gone_clears_it():
+    """The ledger's rule: an OK fetch after a gone is the ad, live; the tombstone (and its gone_at) is
+    cleared. (Before @23 the span kept gone_at; the ledger is now the one rule.)"""
+    obs = [_obs("9000006", 0)]
+    (r,) = export_db.observation_span_rows(obs, [_lst("9000006", 50)], [_gone("9000006", 10)], RUNS)
+    assert (r["status"], r["liveness"], r["gone_at"]) == ("still_listed", "alive", None)
+
+
+def test_a_bad_crawls_cards_are_no_sighting():
+    """ADR-0017 B.2: only a completed crawl with list.status ok counts. 9000007's later card came from a
+    parse_drift crawl, so its span ends at its good card; 9000008 was seen ONLY by that crawl: no live
+    sighting, so no span row."""
+    obs = [_obs("9000007", 0), _obs("9000007", 30, "c-drift"), _obs("9000008", 30, "c-drift")]
+    rows = {r["ad_id"]: r for r in export_db.observation_span_rows(obs, [], [], RUNS)}
+    assert set(rows) == {"9000007"}
+    assert (rows["9000007"]["last_seen"], rows["9000007"]["n_observations"]) == (T(0), 1)
+
+
+def test_the_span_is_the_ledgers_span():
+    """One source of truth: every row's sightings, gone and state equal scrape_harness.liveness's."""
+    from scrape_harness import liveness, policy
+
+    obs = [_obs("9000009", 0), _obs("9000009", 30), _obs("9000010", 2), _obs("9000010", 40, "c-drift")]
+    listings = [_lst("9000010", 3)]
+    events = [_gone("9000009", 60)]
+    led = liveness.build(obs, listings, events, RUNS, policy.DEFAULT.rules())
+    got = export_db.observation_span_rows(obs, listings, events, RUNS)
+    assert [(r["ad_id"], r["liveness"], r["n_observations"]) for r in got] == [
+        (s["ad_id"], s["status"], s["n_sightings"]) for s in led.spans()
     ]
-    (r,) = export_db.observation_span_rows(obs, listings, events, [])
-    assert (r["status"], r["gone_at"]) == (
-        "still_listed",
-        T(10),
-    )  # relisted: the gone is kept, not the status
+    assert [r["first_seen"] for r in got] == [export_db.utc(s["first_seen"]) for s in led.spans()]
 
 
 def test_ad_id_from_path_ignores_a_query_or_fragment():

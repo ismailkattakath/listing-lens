@@ -262,19 +262,22 @@ CREATE VIEW listings_latest AS
   LEFT JOIN derived d USING (site, ad_id)
   LEFT JOIN adv a USING (site, ad_id);
 
--- Survival (GQM G6.Q4): ONE row per ad li ever saw. A sighting = a list card (observations.seen_at) or an ad
--- fetch (listings.fetched_at, never a reparse). gone = events kind=gone (its url's ad id), else a run log's
--- `gone` line attributed to the ad `request` right before it (export_db.gone_records).
+-- Survival (GQM G6.Q4): ONE row per ad with a live sighting, read from the harness's liveness ledger
+-- (scrape_harness.liveness, export-db@23). A sighting = a GOOD crawl's list card (completed, list.status ok) or
+-- an OK ad fetch (never a reparse). gone = the ledger's tombstone (events kind=gone, joined by its adkey rule).
 CREATE TABLE ad_observation_span (
   site           text NOT NULL,
   ad_id          text NOT NULL,
   first_seen     timestamptz NOT NULL,
   last_seen      timestamptz NOT NULL,     -- the last LIVE sighting (a gone_at may follow it)
-  n_observations integer NOT NULL,         -- live sightings
-  gone_at        timestamptz,              -- the earliest gone record; NULL if never gone
-  gone_reason    text,                     -- expired_notice | http_410 | … (NULL for a log-only attribution)
-  gone_source    text,                     -- event | run_log
-  status         text NOT NULL,            -- gone | still_listed (seen live >= 4 h after first_seen) | unknown
+  n_observations integer NOT NULL,         -- live sightings: a GOOD crawl's list cards + OK fetches
+  gone_at        timestamptz,              -- the tombstone (or the quarantined gone); NULL if none stands
+  gone_reason    text,                     -- expired_notice | http_410 | …
+  gone_run       text,                     -- the run that wrote that gone event
+  liveness       text NOT NULL,            -- the harness ledger's state: alive | tombstoned | quarantined | held
+  readmitted     integer NOT NULL,         -- list re-admissions after a tombstone (0 or 1)
+  held_since     timestamptz,              -- the parse_failed event that holds it
+  status         text NOT NULL,            -- gone (tombstoned) | still_listed (seen live >= 4 h after first_seen) | unknown
   PRIMARY KEY (site, ad_id)
 );
 
