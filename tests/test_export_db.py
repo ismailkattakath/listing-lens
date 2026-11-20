@@ -591,7 +591,7 @@ def test_a_missing_or_inconsistent_v2_edge_file_is_refused(data, fresh_db, monke
     assert code == 2 and "older" in err
     os.utime(links, (t, t))
     assert export(fresh_db, monkeypatch, capsys)[0] == 0
-    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@24",)]
+    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@25",)]
 
 
 def test_the_frozen_v1_record_loads_next_to_the_v1_1_default(data, fresh_db, monkeypatch, capsys):
@@ -1430,3 +1430,67 @@ def test_no_repeat_means_nothing_dropped(data):
     assert merge["observations_repeat_dropped"] == 0
     keys = [(r["site"], r["ad_id"], r["crawl_id"]) for r in tables["observations"]]
     assert len(keys) == len(set(keys))
+
+
+# ── the api schema for the Neon Data API (export-db@25) ─────────────────────────────────────────
+
+
+def _api_role(dsn, role="api_reader"):
+    import psycopg
+
+    with psycopg.connect(dsn, autocommit=True) as c:
+        c.execute("DROP SCHEMA IF EXISTS api CASCADE")  # the shared test server keeps the last test's api
+        if c.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)).fetchone():
+            c.execute(f"DROP OWNED BY {role}")
+        c.execute(f"DROP ROLE IF EXISTS {role}")
+        c.execute(f"CREATE ROLE {role} NOLOGIN")
+    return role
+
+
+def _as(dsn, role, sql):
+    """Run one statement as `role`; the SQLSTATE on failure, else the rows."""
+    import psycopg
+
+    with psycopg.connect(dsn, autocommit=True) as c:
+        c.execute(f"SET ROLE {role}")
+        try:
+            return c.execute(sql).fetchall()
+        except psycopg.Error as e:
+            return e.sqlstate
+
+
+def test_api_role_reads_the_allowlist_through_api_views_only(data, fresh_db, monkeypatch, capsys):
+    """--api-role ROLE: one read-only view per READABLE relation in schema api, rebuilt on every load;
+    ROLE reads api.* and nothing in li, and cannot write through a view."""
+    role = _api_role(fresh_db)
+    code, _, err = export(fresh_db, monkeypatch, capsys, "--api-role", role)
+    assert code == 0, err[-600:]
+    views = {
+        r[0]
+        for r in q(fresh_db, "SELECT table_name FROM information_schema.views WHERE table_schema = 'api'")
+    }
+    assert views == set(export_db.READABLE)
+    n = q(fresh_db, "SELECT count(*) FROM li.listings")[0][0]
+    assert _as(fresh_db, role, "SELECT count(*) FROM api.listings") == [(n,)]
+    assert _as(fresh_db, role, "SELECT count(*) FROM li.listings") == "42501"  # no right on li
+    for rel in export_db.WITHHELD:
+        assert rel not in views
+    assert _as(fresh_db, role, "DELETE FROM api.findings") == "42501"  # SELECT only
+
+
+def test_api_views_survive_a_rebuild_and_an_unchanged_export(data, fresh_db, monkeypatch, capsys):
+    role = _api_role(fresh_db)
+    assert export(fresh_db, monkeypatch, capsys, "--api-role", role)[0] == 0
+    assert export(fresh_db, monkeypatch, capsys, "--api-role", role, "--force")[0] == 0  # li swapped again
+    assert _as(fresh_db, role, "SELECT count(*) > 0 FROM api.listings") == [(True,)]
+    code, summary, _ = export(fresh_db, monkeypatch, capsys, "--api-role", role)  # digest unchanged
+    assert code == 0 and summary["unchanged"] is True and summary["api_role"] == role
+    assert _as(fresh_db, role, "SELECT count(*) > 0 FROM api.listings") == [(True,)]
+
+
+def test_without_api_role_the_api_schema_is_empty(data, fresh_db, monkeypatch, capsys):
+    """Fail closed: a load without --api-role leaves no view behind (the old ones go with li_old)."""
+    role = _api_role(fresh_db)
+    assert export(fresh_db, monkeypatch, capsys, "--api-role", role)[0] == 0
+    assert export(fresh_db, monkeypatch, capsys, "--force")[0] == 0
+    assert q(fresh_db, "SELECT count(*) FROM information_schema.views WHERE table_schema = 'api'") == [(0,)]

@@ -10,6 +10,11 @@ The version is the one in `pyproject.toml`.
 
 ### Changed
 
+- `export-db@25`: `--api-role ROLE` rebuilds schema `api` on every load and on
+  an unchanged export. It holds one owner-rights view per relation in the
+  boards' allowlist (`READABLE`), for the Neon Data API. ROLE gets `SELECT` on
+  `api` and loses every right on `li`. Without the flag, `api` is left empty
+  (fail closed): the old views go with `li_old`.
 - `export-db@24`: `observations` keeps the first sighting per
   `(site, ad_id, crawl_id)`. A contiguous list walk (ADR-0017 slice 2) can
   see one ad twice in one crawl, because a bump during the walk pushes its card
