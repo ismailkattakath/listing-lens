@@ -34,7 +34,7 @@ from . import derive, geocache, site
 from . import place_apply as pa
 from .commands import geocode_query
 
-LOADER = "export-db@23"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards); @23: ad_observation_span read from scrape_harness.liveness (good crawls only, the ledger's gone join; + liveness, gone_run, readmitted, held_since; gone_source and the run-log gone attribution dropped)
+LOADER = "export-db@24"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards); @23: ad_observation_span read from scrape_harness.liveness (good crawls only, the ledger's gone join; + liveness, gone_run, readmitted, held_since; gone_source and the run-log gone attribution dropped); @24: observations keep the FIRST sighting per (site, ad_id, crawl_id) (a walk's bump-displaced repeat), counted as merge.observations_repeat_dropped
 SCHEMA = "li"
 PHONE_DIR = "import/2026-11-07-phone-session"
 # The site specifics, read through the configured source and the site file's [pipeline.consumer]:
@@ -129,9 +129,17 @@ def depth_decile(page, count) -> int | None:
     return min(9, int(10 * (page - 1) / count))
 
 
-def _observation_rows(d: Path) -> list[dict]:
-    rows = []
+def _observation_rows(d: Path) -> tuple[list[dict], int]:
+    """One row per sighting, and at most ONE per (site, ad_id, crawl_id): a contiguous walk can see an ad twice
+    when a bump mid-walk pushes its card a page down. The FIRST sighting (the shallower page) is kept, the
+    repeats are counted (returned), and observations.jsonl is never rewritten."""
+    rows, seen, dropped = [], set(), 0
     for i, o in enumerate(_jsonl(d / "observations.jsonl")):
+        key = (o["site"], o["ad_id"], o.get("crawl_id"))
+        if key[2] is not None and key in seen:
+            dropped += 1
+            continue
+        seen.add(key)
         lst, c = o.get("list") or {}, o.get("card") or {}
         leo = c.get(site.source().record_key) or {}
         rows.append(
@@ -164,7 +172,7 @@ def _observation_rows(d: Path) -> list[dict]:
                 "card": c,
             }
         )
-    return rows
+    return rows, dropped
 
 
 def _listing_rows(d: Path) -> list[dict]:
@@ -1145,7 +1153,7 @@ def build(now: datetime | None = None) -> tuple[dict[str, list[dict]], dict]:
     now = now or datetime.now(UTC)
     d = store.data_dir()
     regions = _region_rows()
-    obs = _observation_rows(d)
+    obs, repeats = _observation_rows(d)
     listings = _listing_rows(d)
     _place_decisions_current(d)
     _v2_links_current(d)
@@ -1182,6 +1190,7 @@ def build(now: datetime | None = None) -> tuple[dict[str, list[dict]], dict]:
         "ads": ads,
         **services_rows(d),
     }
+    merge = merge | {"observations_repeat_dropped": repeats}
     return {name: [clean_text(r) for r in rows] for name, rows in tables.items()}, merge
 
 

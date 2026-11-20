@@ -591,7 +591,7 @@ def test_a_missing_or_inconsistent_v2_edge_file_is_refused(data, fresh_db, monke
     assert code == 2 and "older" in err
     os.utime(links, (t, t))
     assert export(fresh_db, monkeypatch, capsys)[0] == 0
-    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@23",)]
+    assert q(fresh_db, "SELECT value #>> '{}' FROM li.meta WHERE key = 'loader'") == [("export-db@24",)]
 
 
 def test_the_frozen_v1_record_loads_next_to_the_v1_1_default(data, fresh_db, monkeypatch, capsys):
@@ -1399,3 +1399,34 @@ def test_every_board_query_plans_against_a_real_export(data, fresh_db, monkeypat
                             )
     assert n > 300
     assert not failures, "\n".join(failures)
+
+
+# ── repeat sightings in one crawl (export-db@24) ─────────────────────────────────────────────
+
+
+def test_a_repeat_sighting_in_one_crawl_keeps_the_first_and_is_counted(data, fresh_db, monkeypatch, capsys):
+    """A contiguous walk can see one ad twice: a bump mid-walk pushes its card one page down. observations
+    keeps UNIQUE (site, ad_id, crawl_id), so the export keeps the FIRST sighting (the shallower page) and
+    reports how many it dropped; observations.jsonl itself is never rewritten."""
+    path = data / "observations.jsonl"
+    lines = [x for x in path.read_text().splitlines() if x.strip()]
+    first = json.loads(lines[0])
+    again = json.loads(lines[0]) | {"list": (first.get("list") or {}) | {"page": 99, "position": 1}}
+    path.write_text("\n".join([*lines, json.dumps(again)]) + "\n")
+    code, summary, err = export(fresh_db, monkeypatch, capsys)
+    assert code == 0, err[-600:]
+    got = q(
+        fresh_db,
+        f"SELECT list_page FROM li.observations WHERE site = '{first['site']}' AND ad_id = '{first['ad_id']}'"
+        f" AND crawl_id = '{first['crawl_id']}'",
+    )
+    assert got == [(first["list"]["page"],)]
+    assert summary["merge"]["observations_repeat_dropped"] == 1
+    assert len(path.read_text().splitlines()) == len(lines) + 1  # DATA untouched
+
+
+def test_no_repeat_means_nothing_dropped(data):
+    tables, merge = export_db.build()
+    assert merge["observations_repeat_dropped"] == 0
+    keys = [(r["site"], r["ad_id"], r["crawl_id"]) for r in tables["observations"]]
+    assert len(keys) == len(set(keys))

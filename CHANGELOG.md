@@ -10,6 +10,12 @@ The version is the one in `pyproject.toml`.
 
 ### Changed
 
+- `export-db@24`: `observations` keeps the first sighting per
+  `(site, ad_id, crawl_id)`. A contiguous list walk (ADR-0017 slice 2) can
+  see one ad twice in one crawl, because a bump during the walk pushes its card
+  a page down. The `UNIQUE` rule stays, the repeats are counted in
+  `merge.observations_repeat_dropped`, and `observations.jsonl` is never
+  rewritten. Before this, the repeat made the load fail with a unique violation.
 - The scrape-harness pin moves to f23f117, which ships ADR-0017 slice 1
   (frontier-and-ledger sync): exit 14 for a parse or yield stop, the liveness
   ledger, the fresh-sighting gate with `select_ads` lanes (revisit share hard
