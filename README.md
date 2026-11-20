@@ -34,6 +34,9 @@ secret exec ... -- llens refresh --approve-network --geocode-count N   # N = the
   as the run (`...` above: the two names and their Keychain items). `preflight` says which is missing.
 - **Pick the tunnel:** `--proxy-only <text>` or `--proxy-exclude <text>` (repeatable) choose the `[crawl.proxy]`
   url for a new plan. Do not edit the site file's list for it.
+- **Check the database:** `llens db check --approve-network` runs every board target read-only and prints
+  counts only. `llens db api-check --approve-network` proves the Data API's access rules by status codes.
+  `db export` and `db token` are `export-db` and `api-token` by another name.
 - **From any shell:** `nix run .#llens -- refresh --dry-run` loads this checkout's `.env*` and `.envrc.local`
   (once direnv allows it), so no `nix develop -c` is needed. `nix run .#preflight -- refresh` is the same check.
 - **The approval is bounded:** site, egress, proxy, rate, both list crawls' exact arguments, at most so many

@@ -27,7 +27,7 @@ from importlib import resources
 from pathlib import Path
 
 from scrape_harness import liveness, pipeline, policy, store
-from scrape_harness.cli import card, need_network
+from scrape_harness.cli import approve_network_arg, card, need_network
 from scrape_harness.interfaces import load
 
 from . import derive, geocache, site
@@ -47,6 +47,7 @@ PHONE_GOOGLE_EXPIRES = datetime(2026, 12, 7, tzinfo=UTC)
 # The import's keys that carry the GOOGLE point (maps_url embeds it); the site pin (pin_*) is not Google's.
 GOOGLE_POINT_KEYS = ("lat", "lon", "maps_url")
 EXIT_DB = 11
+DSN_ENV = "LLENS_DB_URL"  # the DSN's env var NAME (pipeline.toml secrets_env); the value is never printed
 EXIT_CONFIG = 2
 VIEWPOINT = "config/viewpoint.json"  # written by the operator in DATA, never in git
 GOLD_V3_MANIFEST = "eval/address-gold-v3/MANIFEST.json"  # names its tranche files; never hard-coded here
@@ -1453,17 +1454,21 @@ def cmd_export_db(args: argparse.Namespace) -> int:
     return 0
 
 
-def register(sub) -> None:
-    x = sub.add_parser(
-        "export-db", help="rebuild the derived Postgres copy (schema li) from DATA, atomically"
-    )
+HELP = "rebuild the derived Postgres copy (schema li) from DATA, atomically"
+
+
+def dsn_env_arg(x: argparse.ArgumentParser) -> None:
+    """--dsn-env: ONE definition, shared by export-db and `db check` (the same database, the same secret)."""
+    x.add_argument("--dsn-env", default=DSN_ENV, help="environment variable holding the DSN (never printed)")
+
+
+def export_args(x: argparse.ArgumentParser) -> None:
+    """export-db's arguments: ONE definition, for `export-db` and its alias `db export`."""
     x.add_argument(
         "--dry-run", action="store_true", help="build every row and print counts + digest; no network"
     )
-    x.add_argument("--approve-network", action="store_true")
-    x.add_argument(
-        "--dsn-env", default="LLENS_DB_URL", help="environment variable holding the DSN (never printed)"
-    )
+    approve_network_arg(x)
+    dsn_env_arg(x)
     x.add_argument(
         "--grant-role", help="read-only role to GRANT USAGE + SELECT on the new schema (e.g. board_ro)"
     )
@@ -1479,3 +1484,7 @@ def register(sub) -> None:
     )
     x.add_argument("--force", action="store_true", help="rebuild even when the digest is unchanged")
     x.set_defaults(fn=cmd_export_db)
+
+
+def register(sub) -> None:
+    export_args(sub.add_parser("export-db", help=HELP))

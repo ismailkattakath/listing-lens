@@ -10,6 +10,26 @@ The version is the one in `pyproject.toml`.
 
 ### Added
 
+- `llens db`: the derived database's commands under one name.
+  - `db export` is `export-db` and `db token` is `api-token`: the same
+    argument definition, the same function, the same gate and exit codes.
+    `cli spec` lists them as their own rows with the target's options (cli.v1
+    aliases are same-level only), and their help starts `alias of`.
+    `pipeline.toml` declares each like its target; a test fails on a difference.
+  - `db check`: runs every Grafana board target read-only against the export
+    DB. All is executed, single and multi are EXPLAINed, and a query variable
+    with no default is resolved live. It prints counts only: rows per target,
+    empties, errors (class and SQLSTATE, never the message). `--json` prints one
+    `db_check.v1` object. `--dry-run` counts the targets offline. Exit 1 on an
+    error; an empty result is reported but does not fail.
+  - `db api-check`: proves the Data API's access rules by status codes. The
+    operator reads rows (2xx and rows > 0); an anonymous token gets 403; no
+    token gets 401; schema li, a withheld table and a public RPC are
+    unreachable (404 or 406). `--json` prints one `api_check.v1` object. It
+    needs the site file's new `[api] rest_url` (the Data API endpoint).
+  - Both need `--approve-network` (`paid`, like export-db) and their secret by
+    name: `db check` `LLENS_DB_URL`, `db api-check` `LLENS_API_PASSWORD`.
+
 - `nix run .#llens -- <args>`, `nix run .#preflight -- <command>` and
   `nix run .#cli-spec`: the harness's apps, from `consumerTools` `cliPackage`.
   They load this checkout's `.env*` and `.envrc.local`, only once direnv

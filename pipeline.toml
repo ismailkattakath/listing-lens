@@ -182,6 +182,48 @@ inputs = [
 ]
 outputs = ["stdout:JSON summary (rows, merge counts, digest); the DB schema li is rebuilt atomically"]
 
+# The `db` group (src/listing_lens/db_check.py). `db export` and `db token` are export-db and api-token by
+# another name (the same parser definition and function); pipeline.v1 has no alias form, so each carries its
+# target's entry, field for field (tests/test_db_group.py fails on any difference).
+[[utilities]]
+name = "db export"
+network = "paid"  # = export-db
+secrets_env = ["LLENS_DB_URL"]
+inputs = [
+  "DATA:observations.jsonl",
+  "DATA:listings.jsonl",
+  "DATA:derived/",
+  "DATA:geocode-cache.jsonl",
+  "DATA:runs/",
+  "DATA:events.jsonl",
+  "DATA:findings.jsonl",
+  "DATA:import/2026-11-07-phone-session/",
+  "DATA:<[boundaries] dir>/<slim> + vocab/label-cd.json",
+  "DATA:eval/address-gold-v3/MANIFEST.json (+ the tranche files it names: hint_gold_v3; missing = exit 2)",
+]
+outputs = ["stdout:JSON summary (rows, merge counts, digest); the DB schema li is rebuilt atomically"]
+
+[[utilities]]
+name = "db token"
+network = "paid"  # = api-token
+secrets_env = ["LLENS_API_PASSWORD"]
+inputs = ["DATA:config/site.toml ([api] auth_url, email)"]
+outputs = ["stdout:a ~15 min Neon Data API JWT (or the clipboard with --copy)"]
+
+[[utilities]]
+name = "db check"
+network = "paid"  # our own database (metered compute), as export-db: --approve-network; --dry-run offline
+secrets_env = ["LLENS_DB_URL"]  # by name only; read-only transaction, never a row value printed
+inputs = ["DATA:config/site.toml ([boards], for the board build)"]
+outputs = ["stdout:db_check.v1 (--json) or a table: rows per board target, empties, errors; counts only"]
+
+[[utilities]]
+name = "db api-check"
+network = "paid"  # our own database project's Neon Auth + Data API (a request wakes the compute)
+secrets_env = ["LLENS_API_PASSWORD"]  # the operator's sign-in, as api-token; by name only
+inputs = ["DATA:config/site.toml ([api] auth_url, email, rest_url)"]
+outputs = ["stdout:api_check.v1 (--json) or a table: status codes and row counts only"]
+
 [[utilities]]
 name = "derive-advertisers"
 network = "none"

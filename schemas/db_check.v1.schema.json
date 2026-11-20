@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "db_check.v1.schema.json",
+  "title": "db_check.v1",
+  "description": "One `llens db check` result: every Grafana board target run read-only against the export DB. The board default (All) is executed, the single/multi states are EXPLAINed, and a query variable with no saved default is resolved live. COUNTS only: never a row value, a rendered SQL text, an error message or the DSN. `ok` is false on any error; an empty result is reported, never a failure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "ok", "dry_run", "boards", "targets", "executed", "explained", "empty", "errors", "variables", "results", "variable_results"],
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "kind", "sqlstate"],
+      "properties": {
+        "state": { "enum": ["all", "single", "multi"] },
+        "kind": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "description": "the error's class name (psycopg's, e.g. UndefinedTable)" },
+        "sqlstate": { "type": ["string", "null"], "pattern": "^[0-9A-Z]{5}$" }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "db_check.v1" },
+    "ok": { "type": "boolean" },
+    "dry_run": { "type": "boolean", "description": "true: the boards were built and counted; nothing was sent" },
+    "boards": { "$ref": "#/$defs/count" },
+    "targets": { "$ref": "#/$defs/count" },
+    "executed": { "$ref": "#/$defs/count" },
+    "explained": { "$ref": "#/$defs/count" },
+    "empty": { "$ref": "#/$defs/count", "description": "targets whose All result has no rows" },
+    "errors": { "$ref": "#/$defs/count", "description": "targets with at least one failed state" },
+    "variables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolved", "empty", "errors"],
+      "properties": { "resolved": { "$ref": "#/$defs/count" }, "empty": { "$ref": "#/$defs/count" }, "errors": { "$ref": "#/$defs/count" } }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["board", "panel", "ref", "rows", "errors"],
+        "properties": {
+          "board": { "type": "string", "description": "the board uid" },
+          "panel": { "type": ["integer", "null"] },
+          "ref": { "type": "string", "description": "the target's refId" },
+          "rows": { "oneOf": [{ "$ref": "#/$defs/count" }, { "type": "null" }], "description": "the All result's row count; null when it failed or on a dry run" },
+          "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } }
+        }
+      }
+    },
+    "variable_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["board", "variable", "status", "error"],
+        "properties": {
+          "board": { "type": "string" },
+          "variable": { "type": "string" },
+          "status": { "enum": ["resolved", "empty", "error", "planned"] },
+          "error": { "oneOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
+        }
+      }
+    }
+  }
+}

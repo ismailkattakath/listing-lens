@@ -17,7 +17,7 @@ import sys
 import urllib.error
 import urllib.request
 
-from scrape_harness.cli import need_network
+from scrape_harness.cli import approve_network_arg, need_network
 
 from . import site
 
@@ -50,6 +50,19 @@ def transport():
     return call
 
 
+def sign_in(call, auth_url: str, email: str, password: str) -> tuple[str | None, str]:
+    """The operator's Neon Auth sign-in -> (the session JWT, "") or (None, why: the HTTP status only).
+    ONE path for `api-token` and `db api-check`; `call` is transport() (one cookie jar for both steps)."""
+    status, _ = call("POST", auth_url + "/sign-in/email", {"email": email, "password": password})
+    if status != 200:
+        return None, f"sign-in refused (HTTP {status})"
+    status, headers = call("GET", auth_url + "/get-session")
+    jwt = headers.get("set-auth-jwt")
+    if status != 200 or not jwt:
+        return None, f"no JWT in the session (HTTP {status})"
+    return jwt, ""
+
+
 def to_clipboard(value: str) -> None:
     subprocess.run(["pbcopy"], input=value.encode(), check=True)
 
@@ -64,15 +77,9 @@ def cmd_api_token(args: argparse.Namespace) -> int:
         return EXIT_CONFIG
     auth_url, email = site.get("api", "auth_url").rstrip("/"), site.get("api", "email")
     need_network(args, AuthNetwork(), "api-token")
-    call = transport()
-    status, _ = call("POST", auth_url + "/sign-in/email", {"email": email, "password": password})
-    if status != 200:
-        sys.stderr.write(f"api-token: sign-in refused (HTTP {status})\n")
-        return EXIT_AUTH
-    status, headers = call("GET", auth_url + "/get-session")
-    jwt = headers.get("set-auth-jwt")
-    if status != 200 or not jwt:
-        sys.stderr.write(f"api-token: no JWT in the session (HTTP {status})\n")
+    jwt, why = sign_in(transport(), auth_url, email, password)
+    if not jwt:
+        sys.stderr.write(f"api-token: {why}\n")
         return EXIT_AUTH
     if args.copy:
         to_clipboard(jwt)
@@ -82,10 +89,15 @@ def cmd_api_token(args: argparse.Namespace) -> int:
     return 0
 
 
-def register(sub) -> None:
-    t = sub.add_parser(
-        "api-token", help="a short-lived Neon Data API JWT for the operator (Neon Auth sign-in)"
-    )
-    t.add_argument("--approve-network", action="store_true")
+HELP = "a short-lived Neon Data API JWT for the operator (Neon Auth sign-in)"
+
+
+def token_args(t) -> None:
+    """api-token's arguments: ONE definition, for `api-token` and its alias `db token`."""
+    approve_network_arg(t)
     t.add_argument("--copy", action="store_true", help="copy the JWT to the clipboard instead of printing it")
     t.set_defaults(fn=cmd_api_token)
+
+
+def register(sub) -> None:
+    token_args(sub.add_parser("api-token", help=HELP))

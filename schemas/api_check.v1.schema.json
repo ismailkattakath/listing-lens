@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api_check.v1.schema.json",
+  "title": "api_check.v1",
+  "description": "One `llens db api-check` result: the Neon Data API's access rules (export-db@25/@26), probed. Status codes, PostgREST error codes and row counts only: never a URL, the email, a token or a response body. `ok` is true only when every probe got what it expects.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "ok", "signed_in", "probes"],
+  "properties": {
+    "schema": { "const": "api_check.v1" },
+    "ok": { "type": "boolean" },
+    "signed_in": { "type": "boolean", "description": "the operator's Neon Auth sign-in gave a JWT" },
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "expect", "status", "code", "rows", "skipped", "ok"],
+        "properties": {
+          "name": {
+            "enum": ["operator_api", "anonymous_api", "no_token_api", "operator_li", "operator_withheld", "operator_public_rpc"],
+            "description": "operator_api: the operator's token reads an api view (2xx AND rows > 0, since the gate answers a wrong subject with an empty 2xx); anonymous_api: an anonymous token is refused (403); no_token_api: no token is refused (401); operator_li / operator_withheld / operator_public_rpc: schema li, a withheld table and a public RPC are unreachable (404 or 406)"
+          },
+          "expect": { "type": "array", "minItems": 1, "items": { "type": "integer" } },
+          "status": { "type": ["integer", "null"], "description": "the HTTP status; null when the probe was skipped" },
+          "code": { "type": ["string", "null"], "pattern": "^(PGRST\\d{3}|[0-9A-Z]{5})$", "description": "the error body's PostgREST code or SQLSTATE, on a 4xx/5xx" },
+          "rows": { "type": ["integer", "null"], "minimum": 0, "description": "Content-Range's total (Prefer: count=exact)" },
+          "skipped": { "enum": [null, "no_anonymous_token"] },
+          "ok": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

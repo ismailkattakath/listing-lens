@@ -789,6 +789,10 @@ def register(sub) -> None:
 
     api_token.register(sub)
 
+    from . import db_check
+
+    db_check.register(sub)  # `db export|token|check|api-check`
+
     bb = sub.add_parser(
         "boundaries-build", help="the site file's [boundaries] dataset: zip -> slim (offline)"
     )
