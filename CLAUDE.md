@@ -56,6 +56,7 @@ GET adds a view to a real person's ad. Plan with `--dry-run`/`--plan`. Never `cu
 | Compare variants | `llens ab --subcategory <s> --pages 2` (list pages only; http, desktop, desktop-nofp, mobile) |
 | Findings | `llens findings validate|append|current`; any contract: `llens validate <name> FILE` |
 | Plug-ins registered | `llens plugins` |
+| Neon Data API token (~15 min) | `secret exec LLENS_API_PASSWORD=<keychain item> -- llens api-token --approve-network [--copy]` |
 
 ## Where things live
 

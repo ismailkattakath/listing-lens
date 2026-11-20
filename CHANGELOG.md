@@ -8,6 +8,16 @@ The version is the one in `pyproject.toml`.
 
 ## [Unreleased]
 
+### Added
+
+- `llens api-token`: signs in to Neon Auth as the operator and prints a
+  short-lived (~15 min) Neon Data API JWT, or copies it with `--copy`. It needs
+  `--approve-network` and the site file's `[api] auth_url, email`. The
+  password arrives only as `$LLENS_API_PASSWORD`, through
+  `secret exec LLENS_API_PASSWORD=<keychain item> -- llens api-token --approve-network`,
+  and is never printed. A failed sign-in is exit 11 and reports the HTTP status
+  only.
+
 ### Changed
 
 - `export-db@26`: every `api` view is gated on `auth.user_id()` (the request

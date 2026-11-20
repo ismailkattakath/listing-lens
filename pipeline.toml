@@ -156,6 +156,13 @@ inputs = ["STATE:crawlee/request_queues/{queue}", "DATA:runs/{run_file}.json"]
 outputs = ["DATA:observations.jsonl, listings.jsonl", "@run"]
 
 [[utilities]]
+name = "api-token"
+network = "paid"  # our own database project's Neon Auth (a sign-in wakes the compute); --approve-network
+# the password only as $LLENS_API_PASSWORD, via `secret exec` by Keychain item name
+inputs = ["DATA:config/site.toml ([api] auth_url, email)"]
+outputs = ["stdout:a ~15 min Neon Data API JWT (or the clipboard with --copy)"]
+
+[[utilities]]
 name = "export-db"
 network = "paid"  # our own database (metered compute); gated like geocode: --approve-network, --dry-run offline
 inputs = [
