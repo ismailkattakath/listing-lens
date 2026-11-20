@@ -1372,7 +1372,6 @@ def test_every_board_query_plans_against_a_real_export(data, fresh_db, monkeypat
     PLANS in Postgres against a real export (EXPLAIN: parse, names and types resolved, nothing executed).
     The guard the 2026-11-13 bug needed: an unqualified `site` in the explorer board's ad-level graph passed every
     static check and failed live with "column reference is ambiguous"."""
-    import re
 
     import psycopg
 
@@ -1388,8 +1387,7 @@ def test_every_board_query_plans_against_a_real_export(data, fresh_db, monkeypat
             for p in model._walk_panels(b["panels"]):
                 for t in p.get("targets", []):
                     for state in ("all", "single", "multi"):
-                        sql = model.render(t["rawSql"], names, state)
-                        sql = re.sub(r"\$__timeFilter\([^)]*\)", "TRUE", sql)
+                        sql = model.strip_time_macros(model.render(t["rawSql"], names, state))
                         n += 1
                         try:
                             c.execute("EXPLAIN " + sql)

@@ -407,6 +407,27 @@ def dashboard(
 
 _VAR_USE = re.compile(r"\$\{(\w+)(?::(\w+))?\}|\$(\w+)|\[\[(\w+)\]\]")
 _ALLOWED_BARE = {"__timeFilter", "__timeFrom", "__timeTo", "__from", "__to", "__interval"}
+_TIME_FILTER = "$__timeFilter("
+_TIME_BOUNDS = {"$__timeFrom()": "'-infinity'::timestamptz", "$__timeTo()": "'infinity'::timestamptz"}
+
+
+def strip_time_macros(sql: str) -> str:
+    """Grafana's time macros for a query run outside Grafana, over ALL time: `$__timeFilter(expr)` becomes
+    TRUE (parentheses inside expr balanced), `$__timeFrom()`/`$__timeTo()` the infinite bounds. The ONE
+    copy of this rule: `db check` and the export test's EXPLAIN pass both use it."""
+    for macro, bound in _TIME_BOUNDS.items():
+        sql = sql.replace(macro, bound)
+    out, i = [], 0
+    while (j := sql.find(_TIME_FILTER, i)) >= 0:
+        k, depth = j + len(_TIME_FILTER), 1
+        while k < len(sql) and depth:
+            depth += {"(": 1, ")": -1}.get(sql[k], 0)
+            k += 1
+        if depth:  # unbalanced: leave the rest as is, so the database names the error
+            break
+        out += [sql[i:j], "TRUE"]
+        i = k
+    return "".join(out) + sql[i:]
 
 
 # Grafana's FieldColorModeId values, copied from packages/grafana-data/src/types/fieldColor.ts at the

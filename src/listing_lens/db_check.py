@@ -30,7 +30,6 @@ from scrape_harness.cli import approve_network_arg, need_network
 
 from . import api_token, export_db, site
 
-TIME_FILTER = re.compile(r"\$__timeFilter\([^)]*\)")  # Grafana's time macro: the check spans all time
 STATES = ("all", "single", "multi")  # all is executed; single/multi carry placeholders, so EXPLAIN only
 SQLSTATE = re.compile(r"^[0-9A-Z]{5}$")
 TIMEOUT_S = 30
@@ -141,7 +140,7 @@ def check(db, built: list[dict], dry_run: bool = False) -> dict:
                 vr["status"] = "planned"
             else:
                 try:
-                    row = db.first(TIME_FILTER.sub("TRUE", model.render(_query_sql(v), names, "all")))
+                    row = db.first(model.strip_time_macros(model.render(_query_sql(v), names, "all")))
                     if row is None:
                         vr["status"] = "empty"
                     else:  # the live value stays in memory: it feeds the panels, it is never printed
@@ -159,7 +158,7 @@ def check(db, built: list[dict], dry_run: bool = False) -> dict:
             if dry_run:
                 continue
             for state in STATES:
-                sql = TIME_FILTER.sub("TRUE", model.render(raw, names, state))
+                sql = model.strip_time_macros(model.render(raw, names, state))  # all time
                 try:
                     if state == "all":
                         r["rows"] = db.count(sql)

@@ -390,3 +390,38 @@ def test_db_check_dry_run_builds_the_shipped_boards(capsys):
     d = json.loads(out)
     contracts.validate("db_check.v1", d)
     assert code == 0 and d["boards"] > 1 and d["targets"] > d["boards"] and d["executed"] == 0
+
+
+# ── one rule for Grafana's time macros (model.strip_time_macros; db check and the export test share it) ──
+
+
+@pytest.mark.parametrize(
+    ("sql", "want"),
+    [
+        ("WHERE $__timeFilter(ts)", "WHERE TRUE"),
+        ("WHERE $__timeFilter( l.at ) AND x", "WHERE TRUE AND x"),
+        ("WHERE $__timeFilter(coalesce(a, b)) AND y", "WHERE TRUE AND y"),  # nested parentheses
+        ("WHERE $__timeFilter(ts) OR $__timeFilter(u)", "WHERE TRUE OR TRUE"),
+        (
+            "WHERE t >= $__timeFrom() AND t < $__timeTo()",
+            "WHERE t >= '-infinity'::timestamptz AND t < 'infinity'::timestamptz",
+        ),
+        ("SELECT '$__all'", "SELECT '$__all'"),  # not a time macro: untouched
+    ],
+)
+def test_strip_time_macros_spans_all_time(sql, want):
+    from listing_lens.grafana import model
+
+    assert model.strip_time_macros(sql) == want
+
+
+def test_db_check_uses_the_one_time_macro_rule(monkeypatch):
+    from listing_lens.grafana import model
+
+    seen: list = []
+    real = model.strip_time_macros
+    monkeypatch.setattr(model, "strip_time_macros", lambda s: seen.append(s) or real(s))
+    db = FakeDb()
+    db_check.check(db, [board("SELECT 1 FROM t WHERE $__timeFilter(coalesce(a, b))")])
+    assert seen and all("$__timeFilter" not in s for s in db.sql) and "WHERE TRUE" in db.sql[0]
+    assert not hasattr(db_check, "TIME_FILTER")  # no second copy of the rule
