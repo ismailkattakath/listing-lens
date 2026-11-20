@@ -2,7 +2,8 @@
 - `perms`        folder + datasource RBAC grants, asserted to be exactly what is intended;
 - `ds-password`  (re)set the datasource password on the EXISTING datasource — the stack never holds it;
 - `bootstrap`    one-time: the li service account (org-admin token), its token into the Keychain.
-Plus `--check` (the hard rules), `build [uid]` (the generated JSON) and `tf plan|apply`.
+Plus `check` (the hard rules), `build [uid]` (the generated JSON) and `tf plan|apply`. The parser and
+the handlers live in cli.py: `llens grafana <subcommand>` (the old `llens-grafana` is deprecated).
 
 Everything personal arrives through the environment, never the repo:
 - LLENS_GRAFANA_URL   the stack URL (plain env);
@@ -16,12 +17,11 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import boards, model
+from . import model
 
 
 class Grafana:
@@ -151,50 +151,14 @@ def bootstrap(g: Grafana, keychain_item: str) -> None:
 
 
 def main(argv: list[str]) -> int:
-    built = boards.build_all()
-    errs = [e for b in built for e in model.check(b)]
-    if errs:
-        print("llens-grafana: refusing, hard-rule violations:\n  " + "\n  ".join(errs), file=sys.stderr)
-        return 2
-    if "--check" in argv:
-        print(f"{len(built)} boards clean")
-        return 0
-    url, token = os.environ.get("LLENS_GRAFANA_URL"), os.environ.get("GRAFANA_TOKEN")
-    if not url or not token:
-        print("llens-grafana: LLENS_GRAFANA_URL and GRAFANA_TOKEN are required", file=sys.stderr)
-        return 2
-    g = Grafana(url, token)
-    if "bootstrap" in argv:
-        bootstrap(g, os.environ.get("LLENS_GRAFANA_TOKEN_ITEM", "llens:grafana:token"))
-    elif "ds-password" in argv:
-        dsn = os.environ.get("LLENS_PG_DSN")
-        if not dsn:
-            print("llens-grafana ds-password: LLENS_PG_DSN is required", file=sys.stderr)
-            return 2
-        ds_password(g, dsn)
-    elif "perms" in argv:
-        folder(g)
-        datasource_grants(g)
-    else:
-        print(
-            "usage: llens-grafana --check | build [uid] | tf plan|apply | perms | ds-password | bootstrap",
-            file=sys.stderr,
-        )
-        return 2
-    return 0
+    """The old in-process entry (argv without the program name): the same handlers as `llens grafana`."""
+    from .cli import legacy_main
+
+    return legacy_main(argv, note=False)
 
 
 def cli() -> None:
-    import json as _json
+    """The `llens-grafana` console script: deprecated for `llens grafana` (grafana/cli.py), one release."""
+    from .cli import legacy
 
-    args = sys.argv[1:]
-    if args[:1] == ["tf"]:
-        from . import tf
-
-        raise SystemExit(tf.main(args[1:]))
-    if args[:1] == ["build"]:
-        for b in boards.build_all():
-            if len(args) < 2 or b["uid"] == args[1]:
-                print(_json.dumps(b, indent=1))
-        raise SystemExit(0)
-    raise SystemExit(main([a for a in args if a != "apply"]))
+    legacy()

@@ -1,5 +1,5 @@
 """The Grafana objects as an OpenTofu stack: folder, 7 dashboards, the datasource — imported, then
-managed by plan/apply. `llens-grafana tf plan|apply` (via `nix run .#grafana-tf`).
+managed by plan/apply. `llens grafana tf plan|apply` (via `nix run .#grafana-tf`).
 
 The Terraform JSON is EMITTED from model.py/boards.py, so the uids, titles and datasource fields have
 one source (a terranix module would hold a second copy of each in Nix). Everything else follows the
@@ -15,7 +15,7 @@ conflicts by writing a sibling copy, so:
 - plan and apply refuse while any sibling of the state file exists (Drive's "grafana (1).tfstate");
 - apply refuses when the state changed since its plan (sha256 recorded at plan time);
 - only tofu writes the state.
-OUT of state, as before: folder/datasource permissions and the service account (`llens-grafana perms`).
+OUT of state, as before: folder/datasource permissions and the service account (`llens grafana perms`).
 """
 
 from __future__ import annotations

@@ -224,6 +224,66 @@ secrets_env = ["LLENS_API_PASSWORD"]  # the operator's sign-in, as api-token; by
 inputs = ["DATA:config/site.toml ([api] auth_url, email, rest_url)"]
 outputs = ["stdout:api_check.v1 (--json) or a table: status codes and row counts only"]
 
+# The `grafana` group (src/listing_lens/grafana/cli.py; the old `llens-grafana`, one parser for both). What
+# calls Grafana's API is `paid` (the only networked class that is not the site): the guard blocks it unless
+# approved, and `llens grafana` takes --approve-network. Secrets by NAME only, as the flake apps set them.
+# `plan` and `apply` are `tf plan` and `tf apply` by a shorter name: each carries tf's entry, field for field
+# (tests/test_grafana_group.py fails on any difference).
+[[utilities]]
+name = "grafana check"
+network = "none"
+inputs = ["DATA:config/site.toml ([boards], for the board build)"]
+outputs = ["stdout:N boards clean, or the hard-rule violations (exit 2)"]
+
+[[utilities]]
+name = "grafana build"
+network = "none"
+inputs = ["DATA:config/site.toml ([boards], for the board build)"]
+outputs = ["stdout:the generated board JSON"]
+
+[[utilities]]
+name = "grafana tf"
+network = "paid"  # Grafana's API (refresh, the plan's row probes, apply); the stack's state under DATA
+secrets_env = ["GRAFANA_TOKEN", "LLENS_PG_DSN", "LLENS_TOFU_PASSPHRASE"]
+inputs = ["DATA:config/site.toml ([boards], for the board build)", "DATA:tofu/grafana.tfstate"]
+outputs = ["DATA:tofu/grafana.tfstate (apply)", "STATE:tofu-grafana/ (the lock, the plan, the work dir)"]
+
+[[utilities]]
+name = "grafana plan"
+network = "paid"  # = grafana tf
+secrets_env = ["GRAFANA_TOKEN", "LLENS_PG_DSN", "LLENS_TOFU_PASSPHRASE"]
+inputs = ["DATA:config/site.toml ([boards], for the board build)", "DATA:tofu/grafana.tfstate"]
+outputs = ["DATA:tofu/grafana.tfstate (apply)", "STATE:tofu-grafana/ (the lock, the plan, the work dir)"]
+
+[[utilities]]
+name = "grafana apply"
+network = "paid"  # = grafana tf
+secrets_env = ["GRAFANA_TOKEN", "LLENS_PG_DSN", "LLENS_TOFU_PASSPHRASE"]
+inputs = ["DATA:config/site.toml ([boards], for the board build)", "DATA:tofu/grafana.tfstate"]
+outputs = ["DATA:tofu/grafana.tfstate (apply)", "STATE:tofu-grafana/ (the lock, the plan, the work dir)"]
+
+[[utilities]]
+name = "grafana perms"
+network = "paid"  # Grafana's RBAC API
+secrets_env = ["GRAFANA_TOKEN"]
+inputs = ["DATA:config/site.toml ([boards], the hard-rule check first)"]
+outputs = ["stdout:the folder and datasource grants"]
+
+[[utilities]]
+name = "grafana ds-password"
+network = "paid"  # Grafana's datasource API; the password goes only into the request body
+secrets_env = ["GRAFANA_TOKEN", "LLENS_PG_DSN"]
+inputs = ["DATA:config/site.toml ([boards], the hard-rule check first)"]
+outputs = ["stdout:password set (value not shown), then the datasource grants"]
+
+[[utilities]]
+name = "grafana bootstrap"
+network = "paid"  # Grafana's service-account API, with an org-admin token
+operator_only = true  # one-time: it mints the boards' token (into the Keychain, never printed)
+secrets_env = ["GRAFANA_TOKEN"]
+inputs = ["DATA:config/site.toml ([boards], the hard-rule check first)"]
+outputs = ["stdout:the service account summary (the token goes to the Keychain item, by name)"]
+
 [[utilities]]
 name = "derive-advertisers"
 network = "none"

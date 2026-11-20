@@ -793,6 +793,10 @@ def register(sub) -> None:
 
     db_check.register(sub)  # `db export|token|check|api-check`
 
+    from .grafana import cli as grafana_cli
+
+    grafana_cli.register(sub)  # `grafana check|build|tf|plan|apply|perms|ds-password|bootstrap`
+
     bb = sub.add_parser(
         "boundaries-build", help="the site file's [boundaries] dataset: zip -> slim (offline)"
     )

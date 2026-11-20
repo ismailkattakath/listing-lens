@@ -37,6 +37,10 @@ secret exec ... -- llens refresh --approve-network --geocode-count N   # N = the
 - **Check the database:** `llens db check --approve-network` runs every board target read-only and prints
   counts only. `llens db api-check --approve-network` proves the Data API's access rules by status codes.
   `db export` and `db token` are `export-db` and `api-token` by another name.
+- **The boards:** `llens grafana check` and `llens grafana build [uid]` run offline. `grafana tf plan|apply`
+  (or `grafana plan`, `grafana apply`), `perms`, `ds-password` and `bootstrap` call Grafana's API, so they
+  need `--approve-network`. `nix run .#grafana-tf` and `.#grafana-admin` work as before. `llens-grafana` still
+  works for one release; it prints a deprecation note.
 - **From any shell:** `nix run .#llens -- refresh --dry-run` loads this checkout's `.env*` and `.envrc.local`
   (once direnv allows it), so no `nix develop -c` is needed. `nix run .#preflight -- refresh` is the same check.
 - **The approval is bounded:** site, egress, proxy, rate, both list crawls' exact arguments, at most so many

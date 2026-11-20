@@ -30,6 +30,18 @@ The version is the one in `pyproject.toml`.
   - Both need `--approve-network` (`paid`, like export-db) and their secret by
     name: `db check` `LLENS_DB_URL`, `db api-check` `LLENS_API_PASSWORD`.
 
+- `llens grafana`: the boards' commands in the one CLI (it was `llens-grafana`).
+  - `check`, `build [uid]`, `tf plan|apply`, `perms`, `ds-password` and
+    `bootstrap`; `plan` and `apply` are short for `tf plan` and `tf apply`.
+  - One parser definition serves both spellings. `llens-grafana <sub> --help`
+    equals `llens grafana <sub> --help` but for the name, and both reach the
+    same function. A test fails on a difference.
+  - `pipeline.toml` declares each one. `check` and `build` are offline. The
+    ones that call Grafana's API are `paid`, with their secrets by name
+    (`GRAFANA_TOKEN`, plus `LLENS_PG_DSN`, `LLENS_TOFU_PASSPHRASE` where read).
+    `bootstrap` is operator-only. Under `llens grafana` they need
+    `--approve-network`, and the guard blocks them without it.
+
 - `nix run .#llens -- <args>`, `nix run .#preflight -- <command>` and
   `nix run .#cli-spec`: the harness's apps, from `consumerTools` `cliPackage`.
   They load this checkout's `.env*` and `.envrc.local`, only once direnv
@@ -52,6 +64,11 @@ The version is the one in `pyproject.toml`.
 
 ### Changed
 
+- `llens-grafana` is deprecated; it goes in the next release. It prints one
+  line to stderr naming the new spelling, then runs the same function. Its gate
+  is unchanged (no new flag), so `nix run .#grafana-tf` and `.#grafana-admin`
+  still call it as before. It now takes `--help`. Its old grammar still works:
+  `--check`, a leading `apply`, and words anywhere in their old order.
 - The scrape-harness pin moves to 49f9cf5 (plugin 1.3.0): `cli spec`,
   `claude-md`, `preflight`, `refresh --proxy-only/--proxy-exclude`, and the
   run_report.v1 and diagnosis.v1 agent contracts. The switch goldens did not move.
