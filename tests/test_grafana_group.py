@@ -243,6 +243,7 @@ def _app_exec(name: str) -> str:
     return " ".join(out)
 
 
+@pytest.mark.skipif(not FLAKE.exists(), reason="repo-only: the package's source set has no flake.nix")
 @pytest.mark.parametrize(("app", "prefix"), [("grafanaAdmin", "grafana"), ("grafanaTf", "grafana tf")])
 def test_the_flake_apps_exec_llens_grafana_with_the_approval(app, prefix):
     line = _app_exec(app)
