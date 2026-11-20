@@ -5,6 +5,9 @@
 #
 #   nix develop          → python (harness + deps, editable listing_lens), the `llens` CLI, ruff, check-jsonschema, gitleaks
 #   nix run              → the `llens` CLI (packages.default; pipeline.toml is its default pipeline)
+#   nix run .#llens -- … → the same CLI with this checkout's .env* and .envrc.local loaded (harness app)
+#   nix run .#preflight -- refresh → what a refresh needs (secrets by NAME, signers, cooldown), offline
+#   nix run .#cli-spec   → the command tree as cli.v1 JSONL (repo-only)
 #   nix run .#env-doctor → which catalogued env vars are set (NAMES only, never values)
 #   nix run .#grafana-admin perms|ds-password|bootstrap → what stays outside the stack (RBAC, the DS password, the SA)
 #   nix run .#grafana-tf plan|apply → the same objects as an encrypted OpenTofu stack (state under DATA)
@@ -162,6 +165,10 @@
           inherit pkgs consumer;
           plugin = "${scrape-harness.packages.${pkgs.stdenv.hostPlatform.system}.plugin}";
           public = true; # a public repo: ship also runs public-gate
+          # the env-loading apps (`nix run .#llens -- ...`, .#preflight, .#cli-spec) wrap the built CLI
+          cliPackage = llens pkgs;
+          # checks.claude-md-drift: the route block between the markers equals `llens claude-md`'s render
+          claudeMd = ./CLAUDE.md;
           extraCatalogue = {
             LLENS_DB_URL = {
               need = "optional";
@@ -300,17 +307,21 @@
     {
       formatter = forAll (pkgs: treefmtEval.${pkgs.stdenv.hostPlatform.system}.config.build.wrapper);
 
-      packages = forAll (pkgs: {
-        default = llens pkgs;
-        inherit (tools pkgs)
-          env-doctor
-          leak-gate
-          public-gate
-          ship
-          ;
-        grafana-admin = grafanaAdmin pkgs;
-        grafana-tf = grafanaTf pkgs;
-      });
+      packages = forAll (
+        pkgs:
+        {
+          default = llens pkgs;
+          inherit (tools pkgs)
+            env-doctor
+            leak-gate
+            public-gate
+            ship
+            ;
+          grafana-admin = grafanaAdmin pkgs;
+          grafana-tf = grafanaTf pkgs;
+        }
+        // (tools pkgs).appPackages # llens, preflight, cli-spec
+      );
 
       apps = forAll (
         pkgs:
@@ -326,6 +337,8 @@
             meta.description = "the llens CLI";
           };
         }
+        # llens, preflight, cli-spec: the CLI with the checkout's .env* and .envrc.local loaded (direnv-allowed only)
+        // (tools pkgs).apps
       );
 
       devShells = forAll (pkgs: {
@@ -351,6 +364,7 @@
           system = pkgs.stdenv.hostPlatform.system;
         in
         self.packages.${system}
+        // (tools pkgs).checks # claude-md-drift
         // {
           formatting = treefmtEval.${system}.config.build.check self;
 

@@ -10,6 +10,18 @@ The version is the one in `pyproject.toml`.
 
 ### Added
 
+- `nix run .#llens -- <args>`, `nix run .#preflight -- <command>` and
+  `nix run .#cli-spec`: the harness's apps, from `consumerTools` `cliPackage`.
+  They load this checkout's `.env*` and `.envrc.local`, only once direnv
+  allows it, so no `nix develop -c` is needed.
+- `checks.claude-md-drift`: the route table in `CLAUDE.md` (between the
+  `scrape-harness:routes` markers) must equal `llens claude-md`. Regenerate it
+  with `llens claude-md --write`. The block is repo-only: no site file value
+  enters it, and a test renders it with and without the site file.
+- `secrets_env` in `pipeline.toml`, names only: `geocode` needs `GEOCODE_KEY`,
+  `export-db` needs `LLENS_DB_URL`, `api-token` needs `LLENS_API_PASSWORD`.
+  `llens preflight refresh` names the first two, `preflight api-token` the
+  third, as present or missing. No value is ever printed.
 - `llens api-token`: signs in to Neon Auth as the operator and prints a
   short-lived (~15 min) Neon Data API JWT, or copies it with `--copy`. It needs
   `--approve-network` and the site file's `[api] auth_url, email`. The
@@ -20,6 +32,15 @@ The version is the one in `pyproject.toml`.
 
 ### Changed
 
+- The scrape-harness pin moves to 49f9cf5 (plugin 1.3.0): `cli spec`,
+  `claude-md`, `preflight`, `refresh --proxy-only/--proxy-exclude`, and the
+  run_report.v1 and diagnosis.v1 agent contracts. The switch goldens did not move.
+- `llens refresh` now refuses with exit 2, before it plans, claims or sends
+  anything, when `GEOCODE_KEY` or `LLENS_DB_URL` is unset. Before this, it
+  stopped after the Touch ID. `refresh --dry-run` warns and goes on.
+- `export_db.SITE_TZ` and `REGIONS` are read on first use, not at import. So
+  `llens cli spec` and `llens claude-md` work with no site file (they read
+  the repo's `pipeline.toml` only). The values are unchanged.
 - `export-db@26`: every `api` view is gated on `auth.user_id()` (the request
   JWT's subject, from Neon's `pg_session_jwt`). A view answers only the user
   ids given as `--api-user`, which is required with `--api-role`. A token Neon

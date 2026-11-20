@@ -21,13 +21,21 @@ any challenge, politeness).
 
 ```sh
 llens refresh --dry-run                          # the run card + the bounds; nothing is sent or saved
-llens refresh                                    # no approval yet: prints the bounds + plan_hash, exits 10
+secret exec ... -- llens preflight refresh       # offline: each secret present or MISSING (by name), signers, cooldown
+secret exec ... -- llens refresh                 # no approval yet: prints the bounds + plan_hash, exits 10
 llens approve <plan_hash>                        # ONE Touch ID signs the bounds (single use, 12 h; --ttl, max 24 h)
 secret exec GEOCODE_KEY="${LLENS_GEOCODE_KEYCHAIN_ITEM:-llens:geocode:apikey}" LLENS_DB_URL=<keychain item> -- \
   llens refresh --approve-network                # runs; stops before geocode if it has paid queries:
 secret exec ... -- llens refresh --approve-network --geocode-count N   # N = the printed count, exactly; 0 needs none
 ```
 
+- **Preflight first:** `geocode` needs `GEOCODE_KEY` and `export-db` needs `LLENS_DB_URL` (`secrets_env` in
+  `pipeline.toml`). `refresh` refuses with exit 2 before any plan when one is unset, so plan it under the same `secret exec`
+  as the run (`...` above: the two names and their Keychain items). `preflight` says which is missing.
+- **Pick the tunnel:** `--proxy-only <text>` or `--proxy-exclude <text>` (repeatable) choose the `[crawl.proxy]`
+  url for a new plan. Do not edit the site file's list for it.
+- **From any shell:** `nix run .#llens -- refresh --dry-run` loads this checkout's `.env*` and `.envrc.local`
+  (once direnv allows it), so no `nix develop -c` is needed. `nix run .#preflight -- refresh` is the same check.
 - **The approval is bounded:** site, egress, proxy, rate, both list crawls' exact arguments, at most so many
   list pages and ad pages, the fetch reasons (new / card_changed / stale_7d), plus one robots.txt check per site
   step. A step outside them stops the chain (exit 3) and spends the approval.

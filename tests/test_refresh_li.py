@@ -43,7 +43,10 @@ def test_geocode_is_count_gated_and_export_db_is_exempt_with_a_reason():
     assert (by["export-db"].paid_exempt or "").strip()
 
 
-def test_refresh_without_an_approval_prints_the_plan_and_sends_nothing(data_dir, capsys):
+def test_refresh_without_an_approval_prints_the_plan_and_sends_nothing(data_dir, capsys, monkeypatch):
+    # planned under `secret exec`, as the operator does: refresh checks its steps' secrets_env first (exit 2)
+    monkeypatch.setenv("GEOCODE_KEY", "synthetic-key")
+    monkeypatch.setenv("LLENS_DB_URL", "synthetic-dsn")
     assert main(["refresh"]) == 10
     out = capsys.readouterr()
     text = out.out + out.err

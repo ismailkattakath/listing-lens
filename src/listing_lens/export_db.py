@@ -40,8 +40,8 @@ PHONE_DIR = "import/2026-11-07-phone-session"
 # The site specifics, read through the configured source and the site file's [pipeline.consumer]:
 PHONE_SITE = pipeline.consumer().default_site
 PHONE_REGION = pipeline.consumer().default_region
-SITE_TZ = site.source().tz
-REGIONS = site.source().regions
+# SITE_TZ and REGIONS (the source's zone and regions) resolve on first use, not at import (__getattr__
+# below): `cli spec` and `claude-md` import this module under the repo-only pipeline, with no site file.
 # The import's README: Google coordinates resolved 2026-11-07 may be cached <= 30 days.
 PHONE_GOOGLE_EXPIRES = datetime(2026, 12, 7, tzinfo=UTC)
 # The import's keys that carry the GOOGLE point (maps_url embeds it); the site pin (pin_*) is not Google's.
@@ -74,12 +74,21 @@ def ddl() -> str:
     )
 
 
+def __getattr__(name: str):
+    """SITE_TZ and REGIONS: the source's zone and regions, read when first asked for (PEP 562)."""
+    if name == "SITE_TZ":
+        return site.source().tz
+    if name == "REGIONS":
+        return site.source().regions
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def utc(s: str | None) -> datetime | None:
     """ISO-8601 with an offset or Z -> UTC; a zone-less wall time is the site's (SITE_TZ)."""
     if not s:
         return None
     t = datetime.fromisoformat(s.replace("Z", "+00:00").replace(" ", "T"))
-    return (t if t.tzinfo else t.replace(tzinfo=SITE_TZ)).astimezone(UTC)
+    return (t if t.tzinfo else t.replace(tzinfo=site.source().tz)).astimezone(UTC)
 
 
 def clean_text(v):
@@ -116,7 +125,7 @@ def ad_id_from_path(path: str) -> str | None:
 
 def _region_rows() -> list[dict]:
     out = []
-    for name, reg in sorted(REGIONS.items()):
+    for name, reg in sorted(site.source().regions.items()):
         (s, w), (n, e) = (tuple(map(float, part.split(","))) for part in reg.bounds.split("|"))
         out.append({"site": PHONE_SITE, "name": name, "south": s, "west": w, "north": n, "east": e})
     return out
@@ -746,7 +755,7 @@ def _phone_rows(d: Path, now: datetime) -> list[dict]:
     # The region rule, shared with derive: each row's label centre from li's geocode cache (the same label
     # query derive uses). The flag is computed from the import's own points even once Google's point
     # itself may no longer be exported; only the boolean is kept.
-    region = REGIONS[PHONE_REGION]
+    region = site.source().regions[PHONE_REGION]
     cache = geocache.load(now)
     from . import boundaries
 
