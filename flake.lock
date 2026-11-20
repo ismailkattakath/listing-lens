@@ -50,11 +50,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795133953,
-        "narHash": "sha256-bbg81wlVSbej5/sGdDoeseJUC8bi/K9E92gnbzASYw4=",
+        "lastModified": 1795150740,
+        "narHash": "sha256-XHjlF5E/f8Qha25A6iQ8kwnGibJqESkt//jOD0Conz4=",
         "owner": "ismailkattakath",
         "repo": "scrape-harness",
-        "rev": "e08c8979b43a612c195bda6663c2310eff2c49fb",
+        "rev": "1be586ee1475358ac86f416773af8576963f4358",
         "type": "github"
       },
       "original": {
