@@ -227,7 +227,8 @@
         };
 
       # what stays OUTSIDE the tofu stack (perms, ds-password, bootstrap): secrets only via `secret exec`
-      # (Keychain item NAMES, overridable), the stack URL from LLENS_GRAFANA_URL.
+      # (Keychain item NAMES, overridable), the stack URL from LLENS_GRAFANA_URL. Both apps run `llens grafana`:
+      # running an app IS the operator's approval, so it passes --approve-network.
       grafanaAdmin =
         pkgs:
         pkgs.writeShellApplication {
@@ -244,11 +245,11 @@
             args+=(GRAFANA_TOKEN="$tok")
             if secret ls | grep -xF "$dsn" >/dev/null; then args+=(LLENS_PG_DSN="$dsn"); fi
             export LLENS_REV="${self.shortRev or self.dirtyShortRev or "unknown"}"
-            exec secret exec "''${args[@]}" -- ${lib.getExe' (llens pkgs) "llens-grafana"} "$@"
+            exec secret exec "''${args[@]}" -- ${lib.getExe' (llens pkgs) "llens"} grafana "$@" --approve-network
           '';
         };
 
-      # the same objects as an OpenTofu stack (llens-grafana tf, src/listing_lens/grafana/tf.py): provider
+      # the same objects as an OpenTofu stack (llens grafana tf, src/listing_lens/grafana/tf.py): provider
       # from nixpkgs, credentials + the state passphrase only via `secret exec`, state under
       # $LLENS_DATA/tofu (Drive), lock + run files under ~/.local/state.
       grafanaTf =
@@ -266,7 +267,7 @@
               GRAFANA_TOKEN="''${LLENS_GRAFANA_TOKEN_ITEM:-llens:grafana:token}" \
               LLENS_PG_DSN="''${LLENS_PG_DSN_ITEM:-llens:db:board-dsn}" \
               LLENS_TOFU_PASSPHRASE="''${LLENS_TOFU_PASSPHRASE_ITEM:-llens:tofu:passphrase}" \
-              -- ${lib.getExe' (llens pkgs) "llens-grafana"} tf "$@"
+              -- ${lib.getExe' (llens pkgs) "llens"} grafana tf "$@" --approve-network
           '';
         };
 

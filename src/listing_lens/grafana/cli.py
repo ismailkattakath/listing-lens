@@ -12,8 +12,8 @@ ONE parser definition (`add_subcommands`) serves both spellings, so `llens-grafa
 
 The networked ones (everything that calls Grafana's API) are `paid` in pipeline.toml, so the guard blocks
 them unless the operator approved. `llens grafana` also gates them in code (`--approve-network`, as `db
-check`). The old `llens-grafana` keeps its old gate, `secret exec` in the flake apps, and no new flag: it
-prints a one-line deprecation note to stderr and runs the same handler. It goes after one release.
+check`). The flake apps run `llens grafana ... --approve-network` (running the app is the approval). The old
+`llens-grafana` keeps its old gate and no new flag: it prints a one-line deprecation note to stderr and runs the same handler. It goes after one release.
 
 Nothing at import time touches the boards or the site file: `register` runs on every `llens` call,
 including `cli spec` in a sandbox with no site file, so each handler imports what it needs.

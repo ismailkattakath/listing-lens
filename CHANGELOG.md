@@ -66,9 +66,18 @@ The version is the one in `pyproject.toml`.
 
 - `llens-grafana` is deprecated; it goes in the next release. It prints one
   line to stderr naming the new spelling, then runs the same function. Its gate
-  is unchanged (no new flag), so `nix run .#grafana-tf` and `.#grafana-admin`
-  still call it as before. It now takes `--help`. Its old grammar still works:
-  `--check`, a leading `apply`, and words anywhere in their old order.
+  is unchanged (no new flag). It now takes `--help`. Its old grammar still
+  works: `--check`, a leading `apply`, and words anywhere in their old order.
+- `nix run .#grafana-tf` and `.#grafana-admin` now run `llens grafana tf`
+  and `llens grafana <sub>`, with `--approve-network` (running the app is the
+  approval). They no longer call `llens-grafana`, so its removal leaves them
+  working and they print no deprecation note. They take the documented forms
+  (`plan|apply`, `perms|ds-password|bootstrap`); for the offline `check` use
+  `llens grafana check`.
+- Grafana's time macros have one rule, `model.strip_time_macros`: `db check`
+  and the export test's EXPLAIN pass both use it. `$__timeFilter(...)` becomes
+  TRUE even with nested parentheses; `$__timeFrom()` and `$__timeTo()` become
+  the infinite bounds.
 - The scrape-harness pin moves to 49f9cf5 (plugin 1.3.0): `cli spec`,
   `claude-md`, `preflight`, `refresh --proxy-only/--proxy-exclude`, and the
   run_report.v1 and diagnosis.v1 agent contracts. The switch goldens did not move.

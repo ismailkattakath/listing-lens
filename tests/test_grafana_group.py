@@ -4,6 +4,7 @@ name, and both reach the same function. The functions that call Grafana are fake
 every value here is SYNTHETIC."""
 
 import argparse
+import pathlib
 
 import pytest
 from scrape_harness import clispec, pipeline
@@ -222,3 +223,44 @@ def test_cli_spec_lists_the_group_and_every_subcommand():
     nets = {r["cmd"] for r in rs if r["kind"] == "option" and r["opt"] == "--approve-network"}
     assert {f"grafana {s}" for s in NETWORKED} <= nets
     assert not {f"grafana {s}" for s in OFFLINE} & nets
+
+
+# ── the flake apps call the new spelling (dropping `llens-grafana` later leaves them working) ────────
+
+FLAKE = pathlib.Path(__file__).resolve().parents[1] / "flake.nix"
+
+
+def _app_exec(name: str) -> str:
+    """The `exec ...` line of one flake app's writeShellApplication text (grafanaAdmin / grafanaTf)."""
+    body = FLAKE.read_text().split(f"      {name} =\n", 1)[1].split("\n      };\n", 1)[0]
+    lines = body.splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.strip().startswith("exec "))
+    out = []
+    for ln in lines[start:]:
+        out.append(ln.strip().rstrip("\\").strip())
+        if not ln.rstrip().endswith("\\"):
+            break
+    return " ".join(out)
+
+
+@pytest.mark.parametrize(("app", "prefix"), [("grafanaAdmin", "grafana"), ("grafanaTf", "grafana tf")])
+def test_the_flake_apps_exec_llens_grafana_with_the_approval(app, prefix):
+    line = _app_exec(app)
+    assert '"llens-grafana"' not in line  # the deprecated console script
+    assert f'"llens"}} {prefix} "$@" --approve-network' in line
+
+
+# the documented app grammar (flake.nix header), with the flag the wrappers append
+@pytest.mark.parametrize(
+    ("argv", "fn"),
+    [
+        (["perms"], gcli.cmd_perms),
+        (["ds-password"], gcli.cmd_ds_password),
+        (["bootstrap"], gcli.cmd_bootstrap),
+        (["tf", "plan"], gcli.cmd_tf),
+        (["tf", "apply"], gcli.cmd_tf),
+    ],
+)
+def test_the_apps_grammar_parses_under_llens_grafana(argv, fn):
+    ns = parser().parse_args(["grafana", *argv, "--approve-network"])
+    assert ns.fn is fn and ns.gated is True and ns.approve_network is True
