@@ -10,6 +10,12 @@ The version is the one in `pyproject.toml`.
 
 ### Changed
 
+- `export-db@26`: every `api` view is gated on `auth.user_id()` (the request
+  JWT's subject, from Neon's `pg_session_jwt`). A view answers only the user
+  ids given as `--api-user`, which is required with `--api-role`. A token Neon
+  Auth issues to anyone else, or no token at all, reads 0 rows, whatever the
+  auth provider's sign-up settings let through. The views are
+  `security_barrier`.
 - `export-db@25`: `--api-role ROLE` rebuilds schema `api` on every load and on
   an unchanged export. It holds one owner-rights view per relation in the
   boards' allowlist (`READABLE`), for the Neon Data API. ROLE gets `SELECT` on

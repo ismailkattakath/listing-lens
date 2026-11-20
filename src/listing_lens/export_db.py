@@ -34,7 +34,7 @@ from . import derive, geocache, site
 from . import place_apply as pa
 from .commands import geocode_query
 
-LOADER = "export-db@25"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards); @23: ad_observation_span read from scrape_harness.liveness (good crawls only, the ledger's gone join; + liveness, gone_run, readmitted, held_since; gone_source and the run-log gone attribution dropped); @24: observations keep the FIRST sighting per (site, ad_id, crawl_id) (a walk's bump-displaced repeat), counted as merge.observations_repeat_dropped; @25: --api-role ROLE rebuilds schema api (one owner-rights view per READABLE relation) for the Neon Data API, ROLE reads api only
+LOADER = "export-db@26"  # @2: dashboard contract; @3: advertiser_links, search_path; @4: run_logs via log_ref, H3 columns; @5: advertisers_ablation; @6: advertisers_v2; @7: advertisers = v1.1, advertisers_v1 frozen; @8: viewpoint; @9: PostGIS geography columns; @10: grant also on an unchanged export; @11: services tables; @12: services_excluded_strata over the depth run only; @13: eval exclusion by v2 operator; @14: services_ads.eval_adjacent; @15: region flags + geocode_decision + location_type on derived; @16: the same region flags on import_phone_ads; @17: place decisions applied (place_* + location_valid_place on derived), refused when DATA decisions/ moved since li derive; @18: location_region_test (boundary | radius) on derived and import_phone_ads; @19: advertiser_v2_links (why v2 merged two ads), refused when inconsistent with advertisers_v2; ad_observation_span (survival: first/last sighting, gone); hint_gold_v3 on derived + listings_latest (the address-gold-v3 frames, via its MANIFEST); listings_masked view generated from gold_mask.view_select(); @20: hint_gold_v3 = the MANIFEST's d6_mask (labelled ads + their current v2 operator-mates), not the whole frame; @21: board_ro reads an explicit allowlist (READABLE) — derived, listings_latest, ads and geocodes are revoked; geocode_cache_summary view; @22: hint_gold_v3 = the labelled ads only (operator-mates are no longer masked on the boards); @23: ad_observation_span read from scrape_harness.liveness (good crawls only, the ledger's gone join; + liveness, gone_run, readmitted, held_since; gone_source and the run-log gone attribution dropped); @24: observations keep the FIRST sighting per (site, ad_id, crawl_id) (a walk's bump-displaced repeat), counted as merge.observations_repeat_dropped; @25: --api-role ROLE rebuilds schema api (one owner-rights view per READABLE relation) for the Neon Data API, ROLE reads api only; @26: every api view is gated on auth.user_id() IN --api-user (required with --api-role), security_barrier
 SCHEMA = "li"
 PHONE_DIR = "import/2026-11-07-phone-session"
 # The site specifics, read through the configured source and the site file's [pipeline.consumer]:
@@ -1220,7 +1220,13 @@ def _cell(table: str, col: str, v, jsonb_cols: set, jsonb):
 
 
 def load_db(
-    conn, tables, schema_sql, meta: dict, grant_role: str | None = None, api_role: str | None = None
+    conn,
+    tables,
+    schema_sql,
+    meta: dict,
+    grant_role: str | None = None,
+    api_role: str | None = None,
+    api_users: list[str] | None = None,
 ) -> None:
     """Build li_new, then swap it in with ONE transaction (old copy or new, never half)."""
     from psycopg import sql
@@ -1261,7 +1267,7 @@ def load_db(
         if grant_role:
             grant(conn, grant_role)
         if api_role:
-            api_views(conn, api_role)
+            api_views(conn, api_role, api_users or [])
 
 
 # The read-only role's relations: an ALLOWLIST, so a new relation is denied until it is classified here
@@ -1327,12 +1333,18 @@ def grant(conn, grant_role: str) -> None:
 API_SCHEMA = "api"
 
 
-def api_views(conn, api_role: str) -> None:
+def api_views(conn, api_role: str, api_users: list[str]) -> None:
     """The Neon Data API's surface (export-db@25, operator decision 2026-11-20): schema api holds one
     read-only view per READABLE relation (the boards' allowlist, ONE list), and api_role reads those views
     and NOTHING in li. Owner-rights views, so the role needs no right on li; SELECT only, so a simple
     view's auto-update is refused. Rebuilt on every load and on an unchanged export: the old views follow
-    li to li_old and die with its CASCADE, so a load without --api-role leaves api empty (fail closed)."""
+    li to li_old and die with its CASCADE, so a load without --api-role leaves api empty (fail closed).
+    The gate (export-db@26): every view answers only a request whose JWT subject (auth.user_id(), Neon's
+    pg_session_jwt) is in api_users, so a token Neon Auth issues to anyone else reads 0 rows, whatever its
+    sign-up settings let through; with no JWT, auth.user_id() is NULL and the view is empty too.
+    security_barrier keeps a caller's filter from running before the gate."""
+    if not api_users:
+        raise ValueError("--api-role needs at least one --api-user")
     from psycopg import sql
 
     role, api = sql.Identifier(api_role), sql.Identifier(API_SCHEMA)
@@ -1340,8 +1352,12 @@ def api_views(conn, api_role: str) -> None:
     conn.execute(sql.SQL("CREATE SCHEMA {}").format(api))
     for rel in READABLE:
         conn.execute(
-            sql.SQL("CREATE VIEW {} AS SELECT * FROM {}").format(
-                sql.Identifier(API_SCHEMA, rel), sql.Identifier("li", rel)
+            sql.SQL(
+                "CREATE VIEW {} WITH (security_barrier) AS SELECT * FROM {} WHERE auth.user_id() = ANY({})"
+            ).format(
+                sql.Identifier(API_SCHEMA, rel),
+                sql.Identifier("li", rel),
+                sql.Literal(sorted(set(api_users))),
             )
         )
     conn.execute(sql.SQL("REVOKE ALL ON ALL TABLES IN SCHEMA li FROM {}").format(role))
@@ -1359,6 +1375,9 @@ def current_digest(conn) -> str | None:
 
 def cmd_export_db(args: argparse.Namespace) -> int:
     now = datetime.now(UTC)
+    if getattr(args, "api_role", None) and not getattr(args, "api_user", None):
+        sys.stderr.write("export-db: --api-role needs at least one --api-user (the gate's allowlist)\n")
+        return EXIT_CONFIG
     try:
         tables, merge = build(now)
     except ValueError as e:  # a malformed config file in DATA: say which, change nothing
@@ -1403,7 +1422,7 @@ def cmd_export_db(args: argparse.Namespace) -> int:
                         if args.grant_role:
                             grant(conn, args.grant_role)
                         if args.api_role:
-                            api_views(conn, args.api_role)
+                            api_views(conn, args.api_role, args.api_user or [])
                 print(
                     json.dumps(
                         {
@@ -1415,7 +1434,7 @@ def cmd_export_db(args: argparse.Namespace) -> int:
                     )
                 )
                 return 0
-            load_db(conn, tables, schema_sql, meta, args.grant_role, args.api_role)
+            load_db(conn, tables, schema_sql, meta, args.grant_role, args.api_role, args.api_user)
     except psycopg.Error as e:  # never the message: a connection error can echo the DSN's parts
         sys.stderr.write(
             f"export-db: database error {type(e).__name__} (sqlstate {getattr(e, 'sqlstate', None)})\n"
@@ -1443,6 +1462,11 @@ def register(sub) -> None:
         "--api-role",
         help="role the Neon Data API runs as (e.g. authenticated): SELECT on schema api's views of the "
         "boards' allowlist, nothing in li",
+    )
+    x.add_argument(
+        "--api-user",
+        action="append",
+        help="a Neon Auth user id (JWT sub) the api views answer; repeatable, required with --api-role",
     )
     x.add_argument("--force", action="store_true", help="rebuild even when the digest is unchanged")
     x.set_defaults(fn=cmd_export_db)
