@@ -43,6 +43,7 @@ def no_clipboard(monkeypatch):
     """The darwin build sandbox is off and /usr/bin/pbcopy exists: never touch the real clipboard."""
     monkeypatch.setenv("LLENS_NO_CLIPBOARD", "1")
     monkeypatch.setenv("LLENS_NO_NOTIFY", "1")
+    monkeypatch.setenv("LLENS_NO_CAFFEINATE", "1")  # harness d03c24f+: no real sleep assertion in tests
 
 
 @pytest.fixture(autouse=True)

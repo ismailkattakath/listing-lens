@@ -8,6 +8,8 @@ The version is the one in `pyproject.toml`.
 
 ## [Unreleased]
 
+- Pin scrape-harness d03c24f: an approved networked run (refresh included) keeps the Mac awake until it exits (`caffeinate -i -w <pid>`); `LLENS_NO_CAFFEINATE=1` opts out.
+
 ### Added
 
 - `llens db`: the derived database's commands under one name.
